@@ -1,0 +1,382 @@
+﻿<UserControl x:Class="HyImageShow.GluePathEditorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:HyImageShow" 
+             xmlns:ui="clr-namespace:Hyperbrid.UIX.Controls;assembly=Hyperbrid.UIX"
+             xmlns:vm="clr-namespace:HyImageShow"
+             mc:Ignorable="d" 
+             Focusable="True"
+             KeyboardNavigation.TabNavigation="Cycle"
+             d:DesignHeight="1080" 
+             d:DesignWidth="1920"
+             d:DataContext="{d:DesignInstance Type=vm:GluePathEditorViewModel,
+                                              IsDesignTimeCreatable=False}">
+    <Grid Name="GridGluePathEditorView">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="200"/>
+            <ColumnDefinition Width="1000"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel 
+            Orientation="Horizontal" 
+            Grid.Column="0" 
+            Grid.ColumnSpan="2"
+            Grid.Row ="0" >
+            <TextBlock 
+                Margin="5"
+                Text="Glue Path Editter 點膠路徑編輯器" 
+                HorizontalAlignment="Left"
+                Foreground="Black"
+                FontSize="18" 
+                FontWeight="Bold"/>
+            <Button Content="選擇背景圖" 
+                    Width="100" 
+                    Height="50" 
+                    Click="SelectImageButton_Click"/>
+
+            <StackPanel Orientation="Horizontal" Margin="10">
+                <Button Content ="復原" 
+                    Width="100" 
+                    Height="50" 
+                    Command="{Binding UndoCommand}" />
+                <!--IsEnabled="{Binding EditCmdHistory.UndoCommands, Converter={StaticResource CollectionAnyToBooleanConverter}}" />-->
+                <Button Content ="重做"
+                    Width="100" 
+                    Height="50" 
+                    Command="{Binding RedoCommand}"/>
+                <!--IsEnabled="{Binding EditCmdHistory.RedoCommands, Converter={StaticResource CollectionAnyToBooleanConverter}}"/>-->
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Margin="10">
+                <Button Content="PlayPath" Width="100" Height="50" Command="{Binding PlayCommand}" />
+                <Button Name ="PauseResumeButton" Content="Pause" Width="100" Height="50" Command="{Binding ResumePauseCommand}" />
+                <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Margin="1">
+                    <TextBlock Text= "{Binding AnimationSpeed, StringFormat=速度: {0:F1}}" 
+                               FontSize="14" 
+                               FontWeight="Bold" 
+                               Foreground="Black" 
+                               HorizontalAlignment="Center" />
+                    <Slider Minimum="1"
+                            Maximum="10"
+                            Width="100" 
+                            Value="{Binding AnimationSpeed, Mode=TwoWay}"
+                            TickFrequency="0.1"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Stretch"
+                            IsSnapToTickEnabled="True"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Margin="1">
+                    <TextBlock Text="{Binding AnimationService.CurrentProgress, StringFormat=進度: {0:P1}}"
+                               FontSize="14" 
+                               FontWeight="Bold" 
+                               Foreground="Black" 
+                               HorizontalAlignment="Center" />
+                    <Slider Name="AnimationSlider"
+                            Minimum="0"
+                            Maximum="1"
+                            Width="100" 
+                            Value="{Binding AnimationService.CurrentProgress, Mode=TwoWay}"
+                            TickFrequency="0.01"
+                            IsSnapToTickEnabled="True"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Stretch"
+                            PreviewMouseLeftButtonDown="AnimationSlider_PreviewMouseLeftButtonDown"
+                            PreviewMouseLeftButtonUp="AnimationSlider_PreviewMouseLeftButtonUp"/>
+                </StackPanel>
+            </StackPanel>
+
+        </StackPanel>
+
+
+        <Grid         
+            Grid.Column="0"  
+            Grid.Row ="1" 
+            Grid.RowSpan ="2" >
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="200"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Row ="0" Orientation="Horizontal" >
+                <Button Content ="增加" Width="100" Height="50" Command="{Binding AddLayerCommand}" />
+                <Button Content ="刪除" Width="100" Height="50" Command="{Binding RemoveLayerCommand}" />
+            </StackPanel>
+            <ListView Name="LayerList" 
+                      Grid.Row ="1"
+                      ItemsSource="{Binding Layers}"
+                      SelectedItem="{Binding CurrentLayer}"
+                      SelectionChanged="LayerList_SelectionChanged"
+                      PreviewMouseLeftButtonDown="LayerList_PreviewMouseLeftButtonDown"
+                      PreviewMouseMove="LayerList_PreviewMouseMove"
+                      AllowDrop="True"
+                      Drop="LayerList_Drop">
+                <ListView.View>
+                    <GridView>
+                        <GridView.ColumnHeaderContainerStyle>
+                            <Style TargetType="GridViewColumnHeader">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="GridViewColumnHeader">
+                                            <Border Background="{DynamicResource LightPrimaryBrush}">
+                                                <ContentPresenter Margin="5"
+                                                                  HorizontalAlignment="Center"
+                                                                  VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </GridView.ColumnHeaderContainerStyle>
+
+                        <GridViewColumn>
+                            <GridViewColumn.HeaderTemplate>
+                                <DataTemplate>
+                                    <TextBlock 
+                                        Text="Visible" 
+                                        FontSize="12"
+                                        FontWeight="Bold"
+                                        Foreground="{DynamicResource PrimaryTextBrush}"/>
+                                </DataTemplate>
+                            </GridViewColumn.HeaderTemplate>
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <CheckBox IsChecked="{Binding IsVisible, Mode=TwoWay}" />
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                        <GridViewColumn DisplayMemberBinding="{Binding Name}">
+                            <GridViewColumn.HeaderTemplate>
+                                <DataTemplate>
+                                    <TextBlock 
+                                        Text="Name" 
+                                        FontSize="12"
+                                        FontWeight="Bold"
+                                        Foreground="{DynamicResource PrimaryTextBrush}"/>
+                                </DataTemplate>
+                            </GridViewColumn.HeaderTemplate>
+                        </GridViewColumn>
+                    </GridView>
+                </ListView.View>
+            </ListView>
+
+            <Label Grid.Row="2" Height="30" Content="操作紀錄復原" Width="200" HorizontalContentAlignment="Left" />
+            <ListView Grid.Row="3" Height="400" ItemsSource="{Binding EditCmdHistory.UndoCommandsString}" />
+            <Label Grid.Row="4" Height="30" Content="操作紀錄重做" Width="200" HorizontalContentAlignment="Left" />
+            <ListView Grid.Row="5" Height="400" ItemsSource="{Binding EditCmdHistory.RedoCommandsString}" />
+        </Grid>
+
+
+        <StackPanel Grid.Column="1" Grid.Row ="1"  Orientation="Horizontal" Margin="10,0,10,0">
+            <Button Content="儲存" Width="50" Height="50" Click="SaveDxfButton_Click" />
+            <Button Content="開啟" Width="50" Height="50" Click="LoadDxfButton_Click" />
+            <Separator/>
+            <ToggleButton Width="50" Height="50"
+                         IsChecked="{Binding IsEnableSelected, Mode=TwoWay}">
+                <ToggleButton.Style>
+                    <Style TargetType="ToggleButton">
+                        <!--BasedOn="{StaticResource ToggleButtonDefault}">-->
+                        <Style.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Content">
+                                    <Setter.Value>
+                                        <StackPanel Orientation="Vertical">
+                                            <!--<Image Source="/HyImageShow;component/Resources/ImageSelected.png" Width="20" Height="20"/>-->
+                                            <TextBlock Text="選取" VerticalAlignment="Bottom"/>
+                                        </StackPanel>
+                                    </Setter.Value>
+                                </Setter>
+                                <Setter Property="Background" Value="Red"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked"  Value="False">
+                                <Setter Property="Content">
+                                    <Setter.Value>
+                                        <StackPanel Orientation="Vertical">
+                                            <!--<Image Source="/HyImageShow;component/Resources/ImageSelected.png" Width="20" Height="20"/>-->
+                                            <TextBlock Text="新增" VerticalAlignment="Bottom"/>
+                                        </StackPanel>
+                                    </Setter.Value>
+                                </Setter>
+                                <Setter Property="Background" Value="Green"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </ToggleButton.Style>
+            </ToggleButton>
+
+            <StackPanel Orientation="Vertical">
+                <Label Content ="Drawing Mode" Width="100" Height="30" />
+                <ComboBox ItemsSource="{Binding EDrawingModeItems}" SelectedItem="{Binding DrawingMode, Mode=TwoWay}" />
+            </StackPanel>
+            <StackPanel Orientation="Vertical">
+                <Label Content ="Orientation" Width="100" Height="30" />
+                <ComboBox
+                    ItemsSource="{Binding EMultiLinesOrientation}" 
+                    SelectedItem="{Binding MultiLinesOrientation, Mode=TwoWay}">
+                    <ComboBox.Style>
+                        <Style TargetType="ComboBox">
+                            <Setter Property="IsEnabled" Value="False" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding DrawingMode}" Value="MultiLines">
+                                    <Setter Property="IsEnabled" Value="True" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ComboBox.Style>
+                </ComboBox>
+            </StackPanel>
+            <StackPanel Orientation="Vertical">
+                <Label Content ="Direction" Width="100" Height="30" />
+                <ComboBox ItemsSource="{Binding EMultiLinesDirection}" 
+                          SelectedItem="{Binding MultiLinesDirection, Mode=TwoWay}">
+                    <ComboBox.Style>
+                        <Style TargetType="ComboBox">
+                            <Setter Property="IsEnabled" Value="False" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding DrawingMode}" Value="MultiLines">
+                                    <Setter Property="IsEnabled" Value="True" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ComboBox.Style>
+                </ComboBox>
+            </StackPanel>
+            
+            <Button Content="Add" Width="100" Height="50" Command="{Binding CurrentLayer.AddLineCommand}" />
+            <Button Content="Delete" Width="100" Height="50" Command="{Binding CurrentLayer.DeleteLineCommand}" />
+            <Button Content="Move Up" Width="100" Height="50" Command="{Binding CurrentLayer.MoveLineUpCommand}" />
+            <Button Content="Move Down" Width="100" Height="50" Command="{Binding CurrentLayer.MoveLineDownCommand}" />
+            <StackPanel Orientation="Horizontal">
+                <Border Width="100" Height="50" 
+                        Background="{Binding SelectedSolidColorBrush}" 
+                        BorderBrush="Black" 
+                        BorderThickness="1"
+                        MouseLeftButtonDown="OpenColorPickerPanel_MouseLeftButtonDown">
+                    <TextBlock Text="選擇顏色" 
+                        HorizontalAlignment="Center" 
+                        VerticalAlignment="Center" 
+                        Foreground="White" />
+                </Border>
+            </StackPanel>
+        </StackPanel>
+
+        <DataGrid Grid.Column="1" 
+                  Grid.Row="2"
+                  Name="DGPathLineEditter" 
+                  AutoGenerateColumns="False" 
+                  CanUserResizeRows="False" 
+                  CanUserResizeColumns="False"
+                  CanUserSortColumns="False"
+                  CanUserDeleteRows="True"
+                  PreviewKeyDown="GluePathEditorView_KeyDown"
+                  ItemsSource="{Binding CurrentLayer.Lines}"
+                  SelectionMode="Extended"
+                  SelectionChanged="DGPathLineEditter_SelectionChanged"
+                  PreviewMouseRightButtonDown="DGPathLineEditter_PreviewMouseRightButtonDown">
+            <!--<DataGrid.Resources>
+                <SolidColorBrush x:Key="SelectedRowBrush" Color="LightBlue"/>
+                <SolidColorBrush x:Key="NormalRowBrush" Color="White"/>
+            </DataGrid.Resources>-->
+
+            <DataGrid.ColumnHeaderStyle>
+                <Style TargetType="DataGridColumnHeader">
+                    <Setter Property="Background" Value="{DynamicResource ArtBlueColorBrush}" />
+                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="FontSize" Value="14"/>
+                    <Setter Property="FontWeight" Value="Bold"/>
+                    <Setter Property="Padding" Value="5"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                </Style>
+            </DataGrid.ColumnHeaderStyle>
+
+
+            <DataGrid.RowStyle>
+                <Style TargetType="DataGridRow" >
+                    <!--BasedOn="{StaticResource DataGridRowStyleCustom}">-->
+                    <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
+                </Style>
+            </DataGrid.RowStyle>
+
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Index" Binding="{Binding LineIndex}" Width="*"/>
+                <DataGridTextColumn Header="Type" Binding="{Binding LinePointType}" IsReadOnly="True"  Width="*"/>
+                <DataGridCheckBoxColumn Header="ShowScale" Binding="{Binding ShowScale, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+                <DataGridTextColumn Header="StartX" Binding="{Binding StartXInMm}" Width="*"/>
+                <DataGridTextColumn Header="StartY" Binding="{Binding StartYInMm}" Width="*"/>
+                <DataGridTextColumn Header="RelativeStartX" Binding="{Binding RelativeStartXInMm}" Width="*"/>
+                <DataGridTextColumn Header="RelativeStartY" Binding="{Binding RelativeStartYInMm}" Width="*"/>
+                <!--<DataGridTextColumn Header="StartXDist" Binding="{Binding StartXDist}" Width="*"/>
+                <DataGridTextColumn Header="StartYDist" Binding="{Binding StartYDist}" Width="*"/>
+                <DataGridTextColumn Header="StartXEdge" Binding="{Binding StartXEdge}" Width="*"/>
+                <DataGridTextColumn Header="StartYEdge" Binding="{Binding StartYEdge}" Width="*"/>-->
+                <DataGridTextColumn Header="EndX" Binding="{Binding EndXInMm}" Width="*"/>
+                <DataGridTextColumn Header="EndY" Binding="{Binding EndYInMm}" Width="*"/>
+                <DataGridTextColumn Header="RelativeEndX" Binding="{Binding RelativeEndXInMm}" Width="*"/>
+                <DataGridTextColumn Header="RelativeEndY" Binding="{Binding RelativeEndYInMm}" Width="*"/>
+                <!--<DataGridTextColumn Header="EndXDist" Binding="{Binding EndXDist}" Width="*"/>
+                <DataGridTextColumn Header="EndYDist" Binding="{Binding EndYDist}" Width="*"/>
+                <DataGridTextColumn Header="EndXEdge" Binding="{Binding EndXEdge}" Width="*"/>
+                <DataGridTextColumn Header="EndYEdge" Binding="{Binding EndYEdge}" Width="*"/>-->
+            </DataGrid.Columns>
+        </DataGrid>
+
+
+        <Button Grid.Column="2"
+                Grid.Row ="0"  
+                Content="Fit" 
+                Width="100" 
+                Height="50" 
+                HorizontalAlignment="Right" 
+                VerticalAlignment="Top" 
+                Margin="10" 
+                Click="FitButton_Click"/>
+
+        <Grid Grid.Column="2" Grid.Row ="1" Grid.RowSpan="2"
+              Name="GluePathCanvasGrid" >
+            <ScrollViewer 
+                HorizontalScrollBarVisibility="Auto"
+                VerticalScrollBarVisibility="Auto" 
+                ClipToBounds="False">
+                <Canvas
+                        x:Name="GluePathCanvas" 
+                        MouseWheel="GluePathCanvas_MouseWheel"
+                        MouseLeftButtonDown="Canvas_MouseLeftButtonDown"
+                        MouseLeftButtonUp="Canvas_MouseLeftButtonUp"
+                        MouseDown="Canvas_MouseDown"
+                        MouseUp ="Canvas_MouseUp"
+                        MouseMove="Canvas_MouseMove"
+                        ClipToBounds="False">
+                    <Image 
+                        Source="{Binding ImageSource}"
+                        Stretch="Uniform" 
+                        Canvas.Left="0" 
+                        Canvas.Top="0" 
+                        Width="720" 
+                        Height="Auto"/>
+                    <Canvas.RenderTransform>
+                        <TransformGroup>
+                            <ScaleTransform x:Name="GluePathCanvasScaleTransform" ScaleX="1" ScaleY="1" />
+                            <TranslateTransform x:Name="GluePathCanvasTranslateTransform" />
+                        </TransformGroup>
+                    </Canvas.RenderTransform>
+                </Canvas>
+            </ScrollViewer>
+        </Grid>
+
+    </Grid>
+</UserControl>
