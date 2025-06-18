@@ -1506,15 +1506,28 @@ namespace HyImageShow.ImageShow
         }
         private void RemoveDrawLine()
         {
+            // 移除所有畫線相關的元素
             if (drawLine != null) MainCanvas.Children.Remove(drawLine);
             if (drawLinePoint1 != null) MainCanvas.Children.Remove(drawLinePoint1);
             if (drawLinePoint2 != null) MainCanvas.Children.Remove(drawLinePoint2);
+            if (drawLineLabel != null) MainCanvas.Children.Remove(drawLineLabel);
+            if (drawLineLabelBorder != null) MainCanvas.Children.Remove(drawLineLabelBorder);
+            if (drawLinePoint1Label != null) MainCanvas.Children.Remove(drawLinePoint1Label);
+            if (drawLinePoint2Label != null) MainCanvas.Children.Remove(drawLinePoint2Label);
+
+            // 重置所有變數
             drawLine = null;
             drawLinePoint1 = null;
             drawLinePoint2 = null;
+            drawLineLabel = null;
+            drawLineLabelBorder = null;
+            drawLinePoint1Label = null;
+            drawLinePoint2Label = null;
             drawLineClickCount = 0;
             isDraggingDrawLineP1 = false;
             isDraggingDrawLineP2 = false;
+            isDraggingDrawLine = false;
+            isDrawingLine = false;
         }
         private void MainCanvas_DrawLine_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {

@@ -62,7 +62,7 @@
             <Button Content="重置縮放" Click="FitButton_Click" Style="{StaticResource ToolButtonStyle}"/>
             <Button Content="十字中心" Click="ShowCrossLinesButton_Click" Style="{StaticResource ToolButtonStyle}"/>
             <Button Content="量尺" Click="RulerButton_Click" Style="{StaticResource ToolButtonStyle}"/>
-            <Button Content="旋轉ROI" Click="RotatableRectRoiButton_Click" Style="{StaticResource ToolButtonStyle}"/>
+            <Button Content="矩形ROI" Click="RotatableRectRoiButton_Click" Style="{StaticResource ToolButtonStyle}"/>
             <Button Content="圓形ROI" Click="EllipseRoiButton_Click" Style="{StaticResource ToolButtonStyle}"/>
             <Button Content="畫線" Click="DrawLineButton_Click" Style="{StaticResource ToolButtonStyle}"/>
             <Button Content="多邊形ROI" Click="PolygonRoiButton_Click" Style="{StaticResource ToolButtonStyle}"/>
