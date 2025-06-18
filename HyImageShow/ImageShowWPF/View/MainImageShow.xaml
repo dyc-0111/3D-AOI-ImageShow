@@ -55,20 +55,27 @@
 
     <DockPanel>
         <!-- 右側工具列 -->
-        <StackPanel DockPanel.Dock="Right" Width="120" Background="Transparent">
-            <Button Content="新增空白檔" Click="NewFileButton_Click" Style="{StaticResource ToolButtonStyle}"/>
-            <Button Content="儲存檔案" Click="SaveFileButton_Click" Style="{StaticResource ToolButtonStyle}"/>
-            <Button Content="開啟檔案" Click="OpenFileButton_Click" Style="{StaticResource ToolButtonStyle}"/>
-            <Button Content="重置縮放" Click="FitButton_Click" Style="{StaticResource ToolButtonStyle}"/>
-            <Button Content="十字中心" Click="ShowCrossLinesButton_Click" Style="{StaticResource ToolButtonStyle}"/>
-            <Button Content="量尺" Click="RulerButton_Click" Style="{StaticResource ToolButtonStyle}"/>
-            <Button Content="矩形ROI" Click="RotatableRectRoiButton_Click" Style="{StaticResource ToolButtonStyle}"/>
-            <Button Content="圓形ROI" Click="EllipseRoiButton_Click" Style="{StaticResource ToolButtonStyle}"/>
-            <Button Content="畫線" Click="DrawLineButton_Click" Style="{StaticResource ToolButtonStyle}"/>
-            <Button Content="多邊形ROI" Click="PolygonRoiButton_Click" Style="{StaticResource ToolButtonStyle}"/>
-            <Button Content="弧形ROI" Click="ArcRoiButton_Click" Style="{StaticResource ToolButtonStyle}"/>
-            <Button Content="清空" Height="40" Margin="8" Click="ClearButton_Click" Style="{StaticResource ToolButtonStyle}"/>
-        </StackPanel>
+        <Grid DockPanel.Dock="Right" Width="120" Background="Transparent">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            
+            <StackPanel Grid.Row="0" Margin="10,10">
+                <Button Content="新增空白檔" Click="NewFileButton_Click" Style="{StaticResource ToolButtonStyle}"/>
+                <Button Content="儲存檔案" Click="SaveFileButton_Click" Style="{StaticResource ToolButtonStyle}"/>
+                <Button Content="開啟檔案" Click="OpenFileButton_Click" Style="{StaticResource ToolButtonStyle}"/>
+                <Button Content="重置縮放" Click="FitButton_Click" Style="{StaticResource ToolButtonStyle}"/>
+                <Button Content="十字中心" Click="ShowCrossLinesButton_Click" Style="{StaticResource ToolButtonStyle}"/>
+                <Button Content="量尺" Click="RulerButton_Click" Style="{StaticResource ToolButtonStyle}"/>
+                <Button Content="矩形ROI" Click="RotatableRectRoiButton_Click" Style="{StaticResource ToolButtonStyle}"/>
+                <Button Content="圓形ROI" Click="EllipseRoiButton_Click" Style="{StaticResource ToolButtonStyle}"/>
+                <Button Content="畫線" Click="DrawLineButton_Click" Style="{StaticResource ToolButtonStyle}"/>
+                <Button Content="多邊形ROI" Click="PolygonRoiButton_Click" Style="{StaticResource ToolButtonStyle}"/>
+                <Button Content="弧形ROI" Click="ArcRoiButton_Click" Style="{StaticResource ToolButtonStyle}"/>
+            </StackPanel>
+            <Button Grid.Row="1" Content="清空" Height="40" Margin="10,10" Click="ClearButton_Click" Style="{StaticResource ToolButtonStyle}"/>
+        </Grid>
         <!-- 主顯示區 -->
         <Grid Name="MainCanvasGrid" Background="#D3D3D3">
             <ScrollViewer 

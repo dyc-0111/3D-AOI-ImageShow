@@ -23,7 +23,6 @@ namespace HyImageShow.ImageShow
             InitializeComponent();
             MainCanvas.SizeChanged += MainCanvas_SizeChanged;
             MainCanvasGrid.SizeChanged += MainCanvasGrid_SizeChanged;
-            // 新增鍵盤事件處理
             this.KeyDown += MainImageShow_KeyDown;
         }
 
@@ -134,30 +133,7 @@ namespace HyImageShow.ImageShow
         private int draggingArcDotIndex = -1;           // 正在拖曳的控制點索引
         private Line arcRoiPreviewLine = null;          // 預覽線
 
-        private int HitTestRotRectRoi(Point pos)
-        {
-            // 回傳：0-3=角錨點，4=旋轉錨點，5=本體，-1=無
-            double tol = 12;
-            // 角錨點
-            double rad = rotRectAngle * Math.PI / 180.0;
-            double cosA = Math.Cos(rad), sinA = Math.Sin(rad);
-            double hw = rotRectWidth / 2, hh = rotRectHeight / 2;
-            Point[] corners = new Point[4];
-            corners[0] = new Point(rotRectCenter.X - hw * cosA + hh * sinA, rotRectCenter.Y - hw * sinA - hh * cosA); // 左上
-            corners[1] = new Point(rotRectCenter.X + hw * cosA + hh * sinA, rotRectCenter.Y + hw * sinA - hh * cosA); // 右上
-            corners[2] = new Point(rotRectCenter.X + hw * cosA - hh * sinA, rotRectCenter.Y + hw * sinA + hh * cosA); // 右下
-            corners[3] = new Point(rotRectCenter.X - hw * cosA - hh * sinA, rotRectCenter.Y - hw * sinA + hh * cosA); // 左下
-            for (int i = 0; i < 4; i++)
-                if ((pos - corners[i]).Length < tol) return i;
-            // 旋轉錨點
-            double rotDotDist = 32;
-            double rotDotX = (corners[0].X + corners[1].X) / 2 + rotDotDist * -sinA;
-            double rotDotY = (corners[0].Y + corners[1].Y) / 2 + rotDotDist * cosA;
-            if ((pos - new Point(rotDotX, rotDotY)).Length < tol) return 4;
-            // 本體（多邊形內）
-            if (IsPointInPolygon(pos, corners)) return 5;
-            return -1;
-        }
+        
         private bool IsPointInPolygon(Point p, Point[] poly)
         {
             int n = poly.Length;
@@ -1143,6 +1119,30 @@ namespace HyImageShow.ImageShow
                     break;
                 }
             }
+        }
+        private int HitTestRotRectRoi(Point pos)
+        {
+            // 回傳：0-3=角錨點，4=旋轉錨點，5=本體，-1=無
+            double tol = 12;
+            // 角錨點
+            double rad = rotRectAngle * Math.PI / 180.0;
+            double cosA = Math.Cos(rad), sinA = Math.Sin(rad);
+            double hw = rotRectWidth / 2, hh = rotRectHeight / 2;
+            Point[] corners = new Point[4];
+            corners[0] = new Point(rotRectCenter.X - hw * cosA + hh * sinA, rotRectCenter.Y - hw * sinA - hh * cosA); // 左上
+            corners[1] = new Point(rotRectCenter.X + hw * cosA + hh * sinA, rotRectCenter.Y + hw * sinA - hh * cosA); // 右上
+            corners[2] = new Point(rotRectCenter.X + hw * cosA - hh * sinA, rotRectCenter.Y + hw * sinA + hh * cosA); // 右下
+            corners[3] = new Point(rotRectCenter.X - hw * cosA - hh * sinA, rotRectCenter.Y - hw * sinA + hh * cosA); // 左下
+            for (int i = 0; i < 4; i++)
+                if ((pos - corners[i]).Length < tol) return i;
+            // 旋轉錨點
+            double rotDotDist = 32;
+            double rotDotX = (corners[0].X + corners[1].X) / 2 + rotDotDist * -sinA;
+            double rotDotY = (corners[0].Y + corners[1].Y) / 2 + rotDotDist * cosA;
+            if ((pos - new Point(rotDotX, rotDotY)).Length < tol) return 4;
+            // 本體（多邊形內）
+            if (IsPointInPolygon(pos, corners)) return 5;
+            return -1;
         }
         private void RemoveRotRectRoi()
         {
