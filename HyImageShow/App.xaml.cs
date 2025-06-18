@@ -24,7 +24,8 @@ namespace HyImageShow
             {
                 Title = "Main",
                 Width = 800,
-                Height = 600
+                Height = 600,
+                WindowStartupLocation = WindowStartupLocation.CenterScreen,
             };
 
             var view = new MainImageShow();

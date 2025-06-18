@@ -9,57 +9,73 @@
         d:DesignHeight="1080" 
         d:DesignWidth="1920"
         d:DataContext="{d:DesignInstance Type=vm:ImageShowViewModel,
-                                              IsDesignTimeCreatable=False}">
+        IsDesignTimeCreatable=False}">
 
-    <Grid Name="GridGluePathEditorView">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="1200"/>
-            <ColumnDefinition Width="100"/>
-        </Grid.ColumnDefinitions>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="100"/>
-            <RowDefinition Height="100"/>
-            <RowDefinition Height="100"/>
-            <RowDefinition Height="100"/>
-            <RowDefinition Height="100"/>
-            <RowDefinition Height="100"/>
-            <RowDefinition Height="100"/>
-            <RowDefinition Height="100"/>
-            <RowDefinition Height="100"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
+    <UserControl.Resources>
+        <Style x:Key="ToolButtonStyle" TargetType="Button">
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="#333"/>
+            <Setter Property="Background" Value="#fff"/>
+            <Setter Property="BorderBrush" Value="#d1d9e6"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="0,0,0,0"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.12"/>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#e0e3ec"/>
+                    <Setter Property="BorderBrush" Value="#a3b1c6"/>
+                </Trigger>
+                <Trigger Property="Tag" Value="Active">
+                    <Setter Property="Background" Value="#4a90e2"/>
+                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="BorderBrush" Value="#2a6fc9"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
 
-        <Button  Grid.Column="1" Grid.Row ="0"
-                 Content="選擇背景圖" 
-                 Width="100" 
-                 Height="50" 
-                 Padding="10"
-                 HorizontalAlignment="Right" 
-                 Click="SelectImageButton_Click"/>
-
-        <Button Grid.Column="1"
-                Grid.Row ="1"  
-                Content="Fit" 
-                Width="100" 
-                Height="50" 
-                Padding="10"
-                HorizontalAlignment="Right" 
-                Click="FitButton_Click"/>
-
-        <Button Grid.Column="1"
-                Grid.Row ="1"  
-                Content="開關十字" 
-                Width="100" 
-                Height="50" 
-                Padding="10"
-                HorizontalAlignment="Right" 
-                Click="FitButton_Click"/>
-
-        <Grid Grid.Column="0" Grid.Row ="0" Grid.RowSpan="10" Name="MainCanvasGrid" >
+    <DockPanel>
+        <!-- 右側工具列 -->
+        <StackPanel DockPanel.Dock="Right" Width="120" Background="Transparent">
+            <Button Content="新增空白檔" Click="NewFileButton_Click" Style="{StaticResource ToolButtonStyle}"/>
+            <Button Content="儲存檔案" Click="SaveFileButton_Click" Style="{StaticResource ToolButtonStyle}"/>
+            <Button Content="開啟檔案" Click="OpenFileButton_Click" Style="{StaticResource ToolButtonStyle}"/>
+            <Button Content="重置縮放" Click="FitButton_Click" Style="{StaticResource ToolButtonStyle}"/>
+            <Button Content="十字中心" Click="ShowCrossLinesButton_Click" Style="{StaticResource ToolButtonStyle}"/>
+            <Button Content="量尺" Click="RulerButton_Click" Style="{StaticResource ToolButtonStyle}"/>
+            <Button Content="旋轉ROI" Click="RotatableRectRoiButton_Click" Style="{StaticResource ToolButtonStyle}"/>
+            <Button Content="圓形ROI" Click="EllipseRoiButton_Click" Style="{StaticResource ToolButtonStyle}"/>
+            <Button Content="畫線" Click="DrawLineButton_Click" Style="{StaticResource ToolButtonStyle}"/>
+            <Button Content="多邊形ROI" Click="PolygonRoiButton_Click" Style="{StaticResource ToolButtonStyle}"/>
+            <Button Content="弧形ROI" Click="ArcRoiButton_Click" Style="{StaticResource ToolButtonStyle}"/>
+            <Button Content="清空" Height="40" Margin="8" Click="ClearButton_Click" Style="{StaticResource ToolButtonStyle}"/>
+        </StackPanel>
+        <!-- 主顯示區 -->
+        <Grid Name="MainCanvasGrid" Background="#D3D3D3">
             <ScrollViewer 
-            HorizontalScrollBarVisibility="Auto"
-            VerticalScrollBarVisibility="Auto" 
-            ClipToBounds="False">
+                x:Name="MainScrollViewer"
+                HorizontalScrollBarVisibility="Auto"
+                VerticalScrollBarVisibility="Auto" 
+                ClipToBounds="False">
                 <Canvas
                     x:Name="MainCanvas" 
                     MouseWheel="Canvas_MouseWheel"
@@ -70,12 +86,13 @@
                     MouseMove="Canvas_MouseMove"
                     ClipToBounds="False">
                     <Image 
-                    Source="{Binding ImageSource}"
-                    Stretch="Uniform" 
-                    Canvas.Left="0" 
-                    Canvas.Top="0" 
-                    Width="720" 
-                    Height="Auto"/>
+                        Source="{Binding ImageSource}"
+                        Stretch="None" 
+                        Canvas.Left="0" 
+                        Canvas.Top="0"
+                        Width="Auto"
+                        Height="Auto"
+                        RenderOptions.BitmapScalingMode="HighQuality"/>
                     <Canvas.RenderTransform>
                         <TransformGroup>
                             <ScaleTransform x:Name="MainCanvasScaleTransform" ScaleX="1" ScaleY="1" />
@@ -84,7 +101,18 @@
                     </Canvas.RenderTransform>
                 </Canvas>
             </ScrollViewer>
+            <!-- Overlay Canvas for Cross Lines -->
+            <Canvas x:Name="OverlayCanvas" IsHitTestVisible="False" />
+            <!-- 滑鼠座標顯示區 -->
+            <TextBlock x:Name="MousePositionText"
+                       HorizontalAlignment="Right"
+                       VerticalAlignment="Bottom"
+                       Margin="10"
+                       FontSize="16"
+                       Foreground="DarkSlateGray"
+                       Background="#AAFFFFFF"
+                       Padding="8,2"
+                       Text="X: 0, Y: 0"/>
         </Grid>
-    </Grid> 
-
+    </DockPanel>
 </UserControl>

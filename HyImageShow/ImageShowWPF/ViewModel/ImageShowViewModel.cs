@@ -43,7 +43,7 @@ namespace HyImageShow
                 var writable = new WriteableBitmap(bitmap);
                 ImageSource = writable;
 
-                MessageBox.Show("Load Success!");
+                //MessageBox.Show("Load Success!");
             }
             catch
             {
