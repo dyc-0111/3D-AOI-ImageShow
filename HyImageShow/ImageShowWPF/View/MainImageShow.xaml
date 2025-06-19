@@ -86,11 +86,11 @@
                 <Canvas
                     x:Name="MainCanvas" 
                     MouseWheel="Canvas_MouseWheel"
-                    MouseLeftButtonDown="Canvas_MouseLeftButtonDown"
-                    MouseLeftButtonUp="Canvas_MouseLeftButtonUp"
+                    MouseLeftButtonDown="Unified_MouseLeftButtonDown"
+                    MouseLeftButtonUp="Unified_MouseLeftButtonUp"
+                    MouseMove="Unified_MouseMove"
                     MouseDown="Canvas_MouseDown"
                     MouseUp ="Canvas_MouseUp"
-                    MouseMove="Canvas_MouseMove"
                     ClipToBounds="False">
                     <Image 
                         Source="{Binding ImageSource}"

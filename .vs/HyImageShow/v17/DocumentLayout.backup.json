@@ -7,11 +7,11 @@
       "RelativeMoniker": "D:0:0:{7E7C1407-55B0-4FFA-8F24-D85667A21FCD}|HyImageShow\\HyImageShow.csproj|solutionrelative:hyimageshow\\imageshowwpf\\view\\mainimageshow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{7E7C1407-55B0-4FFA-8F24-D85667A21FCD}|HyImageShow\\HyImageShow.csproj|d:\\art\\d\\art_prog\\hyimageshow\\hyimageshow\\gluepathwpf\\base\\drawpath.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{7E7C1407-55B0-4FFA-8F24-D85667A21FCD}|HyImageShow\\HyImageShow.csproj|D:\\ART\\D\\ART_PROG\\HyImageShow\\hyimageshow\\gluepathwpf\\base\\drawpath.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{7E7C1407-55B0-4FFA-8F24-D85667A21FCD}|HyImageShow\\HyImageShow.csproj|solutionrelative:hyimageshow\\gluepathwpf\\base\\drawpath.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{7E7C1407-55B0-4FFA-8F24-D85667A21FCD}|HyImageShow\\HyImageShow.csproj|d:\\art\\d\\art_prog\\hyimageshow\\hyimageshow\\imageshowwpf\\view\\mainimageshow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "AbsoluteMoniker": "D:0:0:{7E7C1407-55B0-4FFA-8F24-D85667A21FCD}|HyImageShow\\HyImageShow.csproj|D:\\ART\\D\\ART_PROG\\HyImageShow\\hyimageshow\\imageshowwpf\\view\\mainimageshow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
       "RelativeMoniker": "D:0:0:{7E7C1407-55B0-4FFA-8F24-D85667A21FCD}|HyImageShow\\HyImageShow.csproj|solutionrelative:hyimageshow\\imageshowwpf\\view\\mainimageshow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
     },
     {
@@ -19,7 +19,7 @@
       "RelativeMoniker": "D:0:0:{7E7C1407-55B0-4FFA-8F24-D85667A21FCD}|HyImageShow\\HyImageShow.csproj|solutionrelative:hyimageshow\\gluepathwpf\\view\\gluepatheditorview.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{7E7C1407-55B0-4FFA-8F24-D85667A21FCD}|HyImageShow\\HyImageShow.csproj|d:\\art\\d\\art_prog\\hyimageshow\\hyimageshow\\gluepathwpf\\base\\line\\service\\drawingservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{7E7C1407-55B0-4FFA-8F24-D85667A21FCD}|HyImageShow\\HyImageShow.csproj|D:\\ART\\D\\ART_PROG\\HyImageShow\\hyimageshow\\gluepathwpf\\base\\line\\service\\drawingservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{7E7C1407-55B0-4FFA-8F24-D85667A21FCD}|HyImageShow\\HyImageShow.csproj|solutionrelative:hyimageshow\\gluepathwpf\\base\\line\\service\\drawingservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
@@ -27,7 +27,7 @@
       "RelativeMoniker": "D:0:0:{7E7C1407-55B0-4FFA-8F24-D85667A21FCD}|HyImageShow\\HyImageShow.csproj|solutionrelative:hyimageshow\\gluepathwpf\\view\\gluepatheditorview.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{7E7C1407-55B0-4FFA-8F24-D85667A21FCD}|HyImageShow\\HyImageShow.csproj|d:\\art\\d\\art_prog\\hyimageshow\\hyimageshow\\imageshowwpf\\viewmodel\\imageshowviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{7E7C1407-55B0-4FFA-8F24-D85667A21FCD}|HyImageShow\\HyImageShow.csproj|D:\\ART\\D\\ART_PROG\\HyImageShow\\hyimageshow\\imageshowwpf\\viewmodel\\imageshowviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{7E7C1407-55B0-4FFA-8F24-D85667A21FCD}|HyImageShow\\HyImageShow.csproj|solutionrelative:hyimageshow\\imageshowwpf\\viewmodel\\imageshowviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
@@ -67,6 +67,14 @@
               "EditorCaption": ""
             },
             {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{6324226f-61b6-4f28-92ee-18d4b5fe1e48}"
+            },
+            {
               "$type": "Document",
               "DocumentIndex": 4,
               "Title": "DrawingService.cs",
@@ -76,8 +84,7 @@
               "RelativeToolTip": "HyImageShow\\GluePathWPF\\Base\\Line\\Service\\DrawingService.cs",
               "ViewState": "AgIAAIIAAAAAAAAAAAAUwLEAAAAQAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-06-16T13:20:48.805Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-06-16T13:20:48.805Z"
             },
             {
               "$type": "Document",
@@ -89,12 +96,7 @@
               "RelativeToolTip": "HyImageShow\\GluePathWPF\\Base\\DrawPath.cs",
               "ViewState": "AgIAAB0AAAAAAAAAAAA0wCoAAAAlAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-06-16T13:19:55.437Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
+              "WhenOpened": "2025-06-16T13:19:55.437Z"
             },
             {
               "$type": "Document",
@@ -105,8 +107,7 @@
               "ToolTip": "D:\\ART\\D\\ART_PROG\\HyImageShow\\HyImageShow\\GluePathWPF\\View\\GluePathEditorView.xaml",
               "RelativeToolTip": "HyImageShow\\GluePathWPF\\View\\GluePathEditorView.xaml",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2025-06-16T11:12:23.807Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-06-16T11:12:23.807Z"
             },
             {
               "$type": "Document",
@@ -117,8 +118,7 @@
               "ToolTip": "D:\\ART\\D\\ART_PROG\\HyImageShow\\HyImageShow\\ImageShowWPF\\View\\MainImageShow.xaml",
               "RelativeToolTip": "HyImageShow\\ImageShowWPF\\View\\MainImageShow.xaml",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2025-06-16T11:33:58.475Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-06-16T11:33:58.475Z"
             },
             {
               "$type": "Document",
@@ -130,8 +130,7 @@
               "RelativeToolTip": "HyImageShow\\GluePathWPF\\View\\GluePathEditorView.xaml.cs",
               "ViewState": "AgIAALUEAAAAAAAAAAD4v8oEAABAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-06-16T11:12:03.373Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-06-16T11:12:03.373Z"
             },
             {
               "$type": "Document",
@@ -143,8 +142,7 @@
               "RelativeToolTip": "HyImageShow\\ImageShowWPF\\ViewModel\\ImageShowViewModel.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAAmAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-06-16T12:06:46.524Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-06-16T12:06:46.524Z"
             },
             {
               "$type": "Document",
@@ -156,8 +154,7 @@
               "RelativeToolTip": "HyImageShow\\App.xaml.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABgAAAAdAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-06-16T12:05:33.991Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-06-16T12:05:33.991Z"
             },
             {
               "$type": "Document",
@@ -169,8 +166,7 @@
               "RelativeToolTip": "HyImageShow\\GluePathWPF\\ViewModel\\GluePathEditorViewModel.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAADsAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-06-16T12:06:06.663Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-06-16T12:06:06.663Z"
             },
             {
               "$type": "Document",
@@ -181,8 +177,7 @@
               "ToolTip": "D:\\ART\\D\\ART_PROG\\HyImageShow\\HyImageShow\\App.xaml",
               "RelativeToolTip": "HyImageShow\\App.xaml",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2025-06-16T12:05:25.901Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-06-16T12:05:25.901Z"
             }
           ]
         }

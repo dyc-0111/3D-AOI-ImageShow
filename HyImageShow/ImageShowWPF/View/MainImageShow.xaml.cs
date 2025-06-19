@@ -18,6 +18,8 @@ namespace HyImageShow.ImageShow
     /// </summary>
     public partial class MainImageShow : UserControl
     {
+        #region Constructor
+
         public MainImageShow()
         {
             InitializeComponent();
@@ -26,7 +28,24 @@ namespace HyImageShow.ImageShow
             this.KeyDown += MainImageShow_KeyDown;
         }
 
+        #endregion
+
+        #region Variables
         public ImageShowViewModel ViewModel => DataContext as ImageShowViewModel;
+
+        // 拖曳優先權管理
+        private enum DragPriority
+        {
+            None = 0,
+            Canvas = 1,
+            Ruler = 2,
+            RotRectRoi = 3,
+            EllipseRoi = 4,
+            DrawLine = 5,
+            PolygonRoi = 6,
+            ArcRoi = 7
+        }
+        private DragPriority currentDragPriority = DragPriority.None;
 
         private bool isDraggingCanvas = false;
         private Point lastMousePosition;
@@ -53,9 +72,6 @@ namespace HyImageShow.ImageShow
         private ScaleTransform rulerPoint1Scale = new ScaleTransform(1, 1);
         private ScaleTransform rulerPoint2Scale = new ScaleTransform(1, 1);
         private Polygon rulerArrow = null;
-        private DropShadowEffect rulerGlow = new DropShadowEffect { Color = Colors.Red, BlurRadius = 10, ShadowDepth = 0, Opacity = 0.7 };
-        private DropShadowEffect rulerDotGlow = new DropShadowEffect { Color = Colors.Red, BlurRadius = 8, ShadowDepth = 0, Opacity = 0.7 };
-        private DropShadowEffect rulerLabelShadow = new DropShadowEffect { Color = Colors.Gray, BlurRadius = 6, ShadowDepth = 2, Opacity = 0.5 };
 
         private Border rulerLabelBorder = null;
 
@@ -133,26 +149,12 @@ namespace HyImageShow.ImageShow
         private int draggingArcDotIndex = -1;           // 正在拖曳的控制點索引
         private Line arcRoiPreviewLine = null;          // 預覽線
 
-        
-        private bool IsPointInPolygon(Point p, Point[] poly)
-        {
-            int n = poly.Length;
-            bool inside = false;
-            for (int i = 0, j = n - 1; i < n; j = i++)
-            {
-                if (((poly[i].Y > p.Y) != (poly[j].Y > p.Y)) &&
-                    (p.X < (poly[j].X - poly[i].X) * (p.Y - poly[i].Y) / (poly[j].Y - poly[i].Y) + poly[i].X))
-                    inside = !inside;
-            }
-            return inside;
-        }
         private Point rotRectDragStart;
         private Point rotRectDragStartCenter;
         private double rotRectDragStartWidth, rotRectDragStartHeight, rotRectDragStartAngle;
 
-        private bool showLabels = true; 
+        private bool showLabels = true;
 
-        // ROI 統一樣式字典
         private readonly Dictionary<string, (Color line, Color glow, Color labelBg, Color labelFg)> styleDict =
             new Dictionary<string, (Color, Color, Color, Color)>
         {
@@ -163,6 +165,22 @@ namespace HyImageShow.ImageShow
             {"arc",     (Color.FromRgb(40, 170, 110), Color.FromRgb(30, 122, 74), Color.FromArgb(220, 180, 240, 200), Color.FromRgb(30, 122, 74))}, // 綠
             {"line",    (Color.FromRgb(0, 188, 212), Color.FromRgb(0, 150, 167), Color.FromArgb(220, 178, 235, 242), Color.FromRgb(0, 105, 120))}, // 青
         };
+
+        private ScaleTransform[] rotRectRoiCornerScales = { new ScaleTransform(1, 1), new ScaleTransform(1, 1), new ScaleTransform(1, 1), new ScaleTransform(1, 1) };
+        private ScaleTransform rotRectRoiRotateScale = new ScaleTransform(1, 1);
+        private ScaleTransform ellipseRoiCenterScale = new ScaleTransform(1, 1);
+        private ScaleTransform ellipseRoiRadiusScale = new ScaleTransform(1, 1);
+        private List<ScaleTransform> polygonRoiDotScales = new List<ScaleTransform>();
+        private ScaleTransform[] arcRoiDotScales = { new ScaleTransform(1, 1), new ScaleTransform(1, 1), new ScaleTransform(1, 1) };
+
+        private Border rotRectRoiLabelBorder = null;
+        private Border ellipseRoiLabelBorder = null;
+        private List<Border> polygonRoiLabelBorders = new List<Border>();
+        private Border arcRoiLabelBorder = null;
+
+        #endregion
+
+        #region Keyboard Event
 
         private void MainImageShow_KeyDown(object sender, KeyEventArgs e)
         {
@@ -179,18 +197,72 @@ namespace HyImageShow.ImageShow
             }
         }
 
-        // 1. 旋轉ROI
-        private ScaleTransform[] rotRectRoiCornerScales = { new ScaleTransform(1, 1), new ScaleTransform(1, 1), new ScaleTransform(1, 1), new ScaleTransform(1, 1) };
-        private ScaleTransform rotRectRoiRotateScale = new ScaleTransform(1, 1);
-        // 2. 圓形ROI
-        private ScaleTransform ellipseRoiCenterScale = new ScaleTransform(1, 1);
-        private ScaleTransform ellipseRoiRadiusScale = new ScaleTransform(1, 1);
-        // 3. 多邊形ROI
-        private List<ScaleTransform> polygonRoiDotScales = new List<ScaleTransform>();
-        // 4. 弧形ROI
-        private ScaleTransform[] arcRoiDotScales = { new ScaleTransform(1, 1), new ScaleTransform(1, 1), new ScaleTransform(1, 1) };
+        #endregion
 
-        #region Canvas Mouse Wheel
+        #region MyRegion
+        private void AnimateScale(ScaleTransform scaleTransform, double scaleFactor)
+        {
+            var scaleAnimation = new DoubleAnimation
+            {
+                To = scaleFactor,
+                Duration = TimeSpan.FromMilliseconds(200),
+                FillBehavior = FillBehavior.Stop
+            };
+            scaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, scaleAnimation);
+            scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, scaleAnimation);
+        }
+
+        private void SetButtonActiveState(Button button, bool isActive)
+        {
+            if (button != null)
+            {
+                button.Tag = isActive ? "Active" : null;
+            }
+        }
+
+        // 輔助方法：查找視覺樹中的所有指定類型的元素
+        private IEnumerable<T> FindVisualChildren<T>(DependencyObject depObj) where T : DependencyObject
+        {
+            if (depObj != null)
+            {
+                for (int i = 0; i < VisualTreeHelper.GetChildrenCount(depObj); i++)
+                {
+                    DependencyObject child = VisualTreeHelper.GetChild(depObj, i);
+                    if (child != null && child is T)
+                        yield return (T)child;
+
+                    foreach (T childOfChild in FindVisualChildren<T>(child))
+                        yield return childOfChild;
+                }
+            }
+        }
+
+        // 目前Label顯示的位置: 輔助方法：根據端點位置決定標註偏移
+        private (double offsetX, double offsetY) GetLabelOffset(Point pt, double canvasWidth, double canvasHeight)
+        {
+            double offsetX = 16, offsetY = -16;
+            // 右下象限
+            if (pt.X > canvasWidth * 0.66 && pt.Y > canvasHeight * 0.66) { offsetX = -80; offsetY = -32; }
+            // 右上象限
+            else if (pt.X > canvasWidth * 0.66 && pt.Y < canvasHeight * 0.33) { offsetX = -80; offsetY = 16; }
+            // 左下象限
+            else if (pt.X < canvasWidth * 0.33 && pt.Y > canvasHeight * 0.66) { offsetX = 16; offsetY = -32; }
+            // 左上象限
+            else if (pt.X < canvasWidth * 0.33 && pt.Y < canvasHeight * 0.33) { offsetX = 16; offsetY = 16; }
+            // 右側
+            else if (pt.X > canvasWidth * 0.66) { offsetX = -80; }
+            // 左側
+            else if (pt.X < canvasWidth * 0.33) { offsetX = 16; }
+            // 下方
+            else if (pt.Y > canvasHeight * 0.66) { offsetY = -32; }
+            // 上方
+            else if (pt.Y < canvasHeight * 0.33) { offsetY = 16; }
+            return (offsetX, offsetY);
+        }
+
+        #endregion
+
+        #region Canvas Mouse Wheel ( For Zoom In/Out )
 
         private void Canvas_MouseWheel(object sender, MouseWheelEventArgs e)
         {
@@ -230,44 +302,7 @@ namespace HyImageShow.ImageShow
 
         #endregion
 
-        #region Canvas Left Mouse
-
-        private void Canvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            if (isDraggingPolygonDot)
-            {
-                Point p = e.GetPosition(MainCanvas);
-                if (polygonRoiPoints.Count > 0)
-                {
-                    // 檢查是否點擊到第一個點（允許5像素的誤差）
-                    Point firstPoint = polygonRoiPoints[0];
-                    if (Math.Abs(p.X - firstPoint.X) < 5 && Math.Abs(p.Y - firstPoint.Y) < 5)
-                    {
-                        isPolygonClosed = true;
-                        DrawPolygonRoi();
-                        return;
-                    }
-                }
-                polygonRoiPoints.Add(p);
-                DrawPolygonRoi();
-            }
-            else if (isDrawingRulerLine)
-            {
-                Point p = e.GetPosition(MainCanvas);
-                rulerP1 = p;
-                rulerP2 = p;
-                DrawRuler();
-            }
-        }
-
-        private void Canvas_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-        {
-
-        }
-
-        #endregion
-
-        #region Canvas Mouse
+        #region Dragging Canvas
 
         private void Canvas_MouseDown(object sender, MouseButtonEventArgs e)
         {
@@ -275,26 +310,9 @@ namespace HyImageShow.ImageShow
             {
                 isDraggingCanvas = true;
                 lastMousePosition = e.GetPosition(MainCanvasGrid);
-
+                currentDragPriority = DragPriority.Canvas;
                 MainCanvas.CaptureMouse();
             }
-        }
-
-        private void Canvas_MouseMove(object sender, MouseEventArgs e)
-        {
-            if (isDraggingCanvas)
-            {
-                var currentPosition = e.GetPosition(MainCanvasGrid);
-                var offset = currentPosition - lastMousePosition;
-
-                MainCanvasTranslateTransform.X += offset.X;
-                MainCanvasTranslateTransform.Y += offset.Y;
-
-                lastMousePosition = currentPosition;
-            }
-            // 顯示滑鼠座標
-            Point p = e.GetPosition(MainCanvas);
-            MousePositionText.Text = $"X: {p.X:F0}, Y: {p.Y:F0}";
         }
 
         private void Canvas_MouseUp(object sender, MouseButtonEventArgs e)
@@ -304,6 +322,144 @@ namespace HyImageShow.ImageShow
                 isDraggingCanvas = false;
                 MainCanvas.ReleaseMouseCapture();
             }
+        }
+
+        #endregion
+
+        #region Canvas Mouse Event
+        private void Unified_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            Point pos = e.GetPosition(MainCanvas);
+
+            // 檢查各模式的點擊優先權（按照 enum 數字，從高到低）
+            DragPriority highestPriority = DragPriority.None;
+            
+            // 檢查所有模式，找出最高優先權的命中模式
+            if (isArcRoiMode && IsArcRoiHitTest(pos))
+            {
+                highestPriority = DragPriority.ArcRoi;
+            }
+            if (isPolygonRoiMode && IsPolygonRoiHitTest(pos))
+            {
+                if ((int)highestPriority < (int)DragPriority.PolygonRoi)
+                    highestPriority = DragPriority.PolygonRoi;
+            }
+            if (isDrawLineMode && IsDrawLineHitTest(pos))
+            {
+                if ((int)highestPriority < (int)DragPriority.DrawLine)
+                    highestPriority = DragPriority.DrawLine;
+            }
+            if (isEllipseRoiMode && IsEllipseRoiHitTest(pos))
+            {
+                if ((int)highestPriority < (int)DragPriority.EllipseRoi)
+                    highestPriority = DragPriority.EllipseRoi;
+            }
+            if (isRotRectRoiMode && IsRotRectRoiHitTest(pos))
+            {
+                if ((int)highestPriority < (int)DragPriority.RotRectRoi)
+                    highestPriority = DragPriority.RotRectRoi;
+            }
+            if (isRulerMode && IsRulerHitTest(pos))
+            {
+                if ((int)highestPriority < (int)DragPriority.Ruler)
+                    highestPriority = DragPriority.Ruler;
+            }
+
+            // 根據最高優先權執行對應的處理
+            currentDragPriority = highestPriority;
+            switch (highestPriority)
+            {
+                case DragPriority.ArcRoi:
+                    HandleArcRoiMouseDown(pos);
+                    break;
+                case DragPriority.PolygonRoi:
+                    HandlePolygonRoiMouseDown(pos);
+                    break;
+                case DragPriority.DrawLine:
+                    HandleDrawLineMouseDown(pos);
+                    break;
+                case DragPriority.EllipseRoi:
+                    HandleEllipseRoiMouseDown(pos);
+                    break;
+                case DragPriority.RotRectRoi:
+                    HandleRotRectRoiMouseDown(pos);
+                    break;
+                case DragPriority.Ruler:
+                    HandleRulerMouseDown(pos);
+                    break;
+            }
+        }
+
+        private void Unified_MouseMove(object sender, MouseEventArgs e)
+        {
+            Point pos = e.GetPosition(MainCanvas);
+
+            // 根據當前優先權處理滑鼠移動
+            switch (currentDragPriority)
+            {
+                case DragPriority.Ruler:
+                    HandleRulerMouseMove(pos);
+                    break;
+                case DragPriority.RotRectRoi:
+                    HandleRotRectRoiMouseMove(pos);
+                    break;
+                case DragPriority.EllipseRoi:
+                    HandleEllipseRoiMouseMove(pos);
+                    break;
+                case DragPriority.DrawLine:
+                    HandleDrawLineMouseMove(pos);
+                    break;
+                case DragPriority.PolygonRoi:
+                    HandlePolygonRoiMouseMove(pos);
+                    break;
+                case DragPriority.ArcRoi:
+                    HandleArcRoiMouseMove(pos);
+                    break;
+                case DragPriority.Canvas:
+                    if (isDraggingCanvas)
+                    {
+                        var currentPosition = e.GetPosition(MainCanvasGrid);
+                        var offset = currentPosition - lastMousePosition;
+                        MainCanvasTranslateTransform.X += offset.X;
+                        MainCanvasTranslateTransform.Y += offset.Y;
+                        lastMousePosition = currentPosition;
+                    }
+                    break;
+            }
+
+            // 顯示滑鼠座標
+            MousePositionText.Text = $"X: {pos.X:F0}, Y: {pos.Y:F0}";
+        }
+
+        private void Unified_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            Point pos = e.GetPosition(MainCanvas);
+
+            // 根據當前優先權處理滑鼠釋放
+            switch (currentDragPriority)
+            {
+                case DragPriority.Ruler:
+                    HandleRulerMouseUp(pos);
+                    break;
+                case DragPriority.RotRectRoi:
+                    HandleRotRectRoiMouseUp(pos);
+                    break;
+                case DragPriority.EllipseRoi:
+                    HandleEllipseRoiMouseUp(pos);
+                    break;
+                case DragPriority.DrawLine:
+                    HandleDrawLineMouseUp(pos);
+                    break;
+                case DragPriority.PolygonRoi:
+                    HandlePolygonRoiMouseUp(pos);
+                    break;
+                case DragPriority.ArcRoi:
+                    HandleArcRoiMouseUp(pos);
+                    break;
+            }
+
+            // 重置優先權
+            currentDragPriority = DragPriority.None;
         }
 
         #endregion
@@ -650,16 +806,10 @@ namespace HyImageShow.ImageShow
         }
         private void EnableRulerMode()
         {
-            MainCanvas.MouseLeftButtonDown += MainCanvas_Ruler_MouseLeftButtonDown;
-            MainCanvas.MouseMove += MainCanvas_Ruler_MouseMove;
-            MainCanvas.MouseLeftButtonUp += MainCanvas_Ruler_MouseLeftButtonUp;
             MainCanvas.Cursor = Cursors.Cross;
         }
         private void DisableRulerMode()
         {
-            MainCanvas.MouseLeftButtonDown -= MainCanvas_Ruler_MouseLeftButtonDown;
-            MainCanvas.MouseMove -= MainCanvas_Ruler_MouseMove;
-            MainCanvas.MouseLeftButtonUp -= MainCanvas_Ruler_MouseLeftButtonUp;
             MainCanvas.Cursor = Cursors.Arrow;
             isRulerMode = false;
             RemoveRuler();
@@ -690,9 +840,8 @@ namespace HyImageShow.ImageShow
             rulerPoint2Label = null;
             rulerClickCount = 0;
         }
-        private void MainCanvas_Ruler_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        private void HandleRulerMouseDown(Point pos)
         {
-            Point pos = e.GetPosition(MainCanvas);
             if (rulerClickCount == 0)
             {
                 rulerP1 = pos;
@@ -718,9 +867,8 @@ namespace HyImageShow.ImageShow
                 }
             }
         }
-        private void MainCanvas_Ruler_MouseMove(object sender, MouseEventArgs e)
+        private void HandleRulerMouseMove(Point pos)
         {
-            Point pos = e.GetPosition(MainCanvas);
             if (rulerClickCount == 1 && isDrawingRulerLine)
             {
                 rulerP2 = pos;
@@ -748,7 +896,7 @@ namespace HyImageShow.ImageShow
                 }
             }
         }
-        private void MainCanvas_Ruler_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        private void HandleRulerMouseUp(Point pos)
         {
             if (rulerClickCount == 1 && isDrawingRulerLine)
             {
@@ -775,6 +923,16 @@ namespace HyImageShow.ImageShow
             double projY = a.Y + t * dy;
             double dist = Math.Sqrt((p.X - projX) * (p.X - projX) + (p.Y - projY) * (p.Y - projY));
             return dist < tol;
+        }
+        private bool IsRulerHitTest(Point pos)
+        {
+            if (rulerClickCount == 0) return true;
+            if (rulerClickCount == 2)
+            {
+                return IsPointNear(pos, rulerP1) || IsPointNear(pos, rulerP2) ||
+                       IsPointNearLine(pos, rulerP1, rulerP2, 10);
+            }
+            return false;
         }
         private void DrawRuler()
         {
@@ -999,14 +1157,26 @@ namespace HyImageShow.ImageShow
         }
         private void EnableRotRectRoiMode()
         {
-            MainCanvas.MouseLeftButtonDown += MainCanvas_RotRectRoi_MouseLeftButtonDown;
-            MainCanvas.MouseMove += MainCanvas_RotRectRoi_MouseMove;
-            MainCanvas.MouseLeftButtonUp += MainCanvas_RotRectRoi_MouseLeftButtonUp;
             MainCanvas.Cursor = Cursors.Cross;
         }
-        private void MainCanvas_RotRectRoi_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        private void DisableRotRectRoiMode()
         {
-            Point pos = e.GetPosition(MainCanvas);
+            MainCanvas.Cursor = Cursors.Arrow;
+            isRotRectRoiMode = false;
+            RemoveRotRectRoi();
+            // 重置按鈕狀態
+            var buttons = FindVisualChildren<Button>(this);
+            foreach (var button in buttons)
+            {
+                if (button.Content.ToString() == "矩形ROI")
+                {
+                    SetButtonActiveState(button, false);
+                    break;
+                }
+            }
+        }
+        private void HandleRotRectRoiMouseDown(Point pos)
+        {
             if (rotRectRoiClickCount < 2)
             {
                 if (rotRectRoiClickCount == 0)
@@ -1016,10 +1186,11 @@ namespace HyImageShow.ImageShow
                     rotRectHeight = 80;
                     rotRectAngle = 0;
                     DrawRotRectRoi();
-                    rotRectRoiClickCount = 2; // 直接進入可拖曳狀態
+                    rotRectRoiClickCount = 2;
                 }
                 return;
             }
+
             int hit = HitTestRotRectRoi(pos);
             if (hit >= 0 && hit <= 3)
             {
@@ -1030,7 +1201,7 @@ namespace HyImageShow.ImageShow
                 rotRectDragStartWidth = rotRectWidth;
                 rotRectDragStartHeight = rotRectHeight;
                 rotRectDragStartAngle = rotRectAngle;
-                AnimateScale(rotRectRoiCornerScales[hit], 1.4); // 補動畫
+                AnimateScale(rotRectRoiCornerScales[hit], 1.4);
             }
             else if (hit == 4)
             {
@@ -1038,7 +1209,7 @@ namespace HyImageShow.ImageShow
                 rotRectDragStart = pos;
                 rotRectDragStartCenter = rotRectCenter;
                 rotRectDragStartAngle = rotRectAngle;
-                AnimateScale(rotRectRoiRotateScale, 1.4); // 補動畫
+                AnimateScale(rotRectRoiRotateScale, 1.4);
             }
             else if (hit == 5)
             {
@@ -1047,10 +1218,10 @@ namespace HyImageShow.ImageShow
                 rotRectDragStartCenter = rotRectCenter;
             }
         }
-        private void MainCanvas_RotRectRoi_MouseMove(object sender, MouseEventArgs e)
+        private void HandleRotRectRoiMouseMove(Point pos)
         {
             if (rotRectRoiClickCount < 2) return;
-            Point pos = e.GetPosition(MainCanvas);
+
             if (isDraggingRotRect)
             {
                 Vector delta = pos - rotRectDragStart;
@@ -1059,22 +1230,18 @@ namespace HyImageShow.ImageShow
             }
             else if (isDraggingRotRectCorner && draggingCornerIndex >= 0)
             {
-                // 拖曳角錨點，滑鼠位置即為該角
                 double rad = rotRectAngle * Math.PI / 180.0;
                 double cosA = Math.Cos(rad), sinA = Math.Sin(rad);
-                // 找到對角點
                 int oppIdx = (draggingCornerIndex + 2) % 4;
                 Point[] corners = new Point[4];
                 double hw = rotRectDragStartWidth / 2, hh = rotRectDragStartHeight / 2;
-                corners[0] = rotRectDragStartCenter + new Vector(-hw * cosA + hh * sinA, -hw * sinA - hh * cosA); // 左上
-                corners[1] = rotRectDragStartCenter + new Vector(hw * cosA + hh * sinA, hw * sinA - hh * cosA);  // 右上
-                corners[2] = rotRectDragStartCenter + new Vector(hw * cosA - hh * sinA, hw * sinA + hh * cosA);  // 右下
-                corners[3] = rotRectDragStartCenter + new Vector(-hw * cosA - hh * sinA, -hw * sinA + hh * cosA);// 左下
+                corners[0] = rotRectDragStartCenter + new Vector(-hw * cosA + hh * sinA, -hw * sinA - hh * cosA);
+                corners[1] = rotRectDragStartCenter + new Vector(hw * cosA + hh * sinA, hw * sinA - hh * cosA);
+                corners[2] = rotRectDragStartCenter + new Vector(hw * cosA - hh * sinA, hw * sinA + hh * cosA);
+                corners[3] = rotRectDragStartCenter + new Vector(-hw * cosA - hh * sinA, -hw * sinA + hh * cosA);
                 Point opp = corners[oppIdx];
                 Point mouse = pos;
-                // 新中心
                 rotRectCenter = new Point((mouse.X + opp.X) / 2, (mouse.Y + opp.Y) / 2);
-                // 轉回本地座標
                 Vector v = mouse - rotRectCenter;
                 double localX = v.X * cosA + v.Y * sinA;
                 double localY = -v.X * sinA + v.Y * cosA;
@@ -1092,7 +1259,7 @@ namespace HyImageShow.ImageShow
                 DrawRotRectRoi();
             }
         }
-        private void MainCanvas_RotRectRoi_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        private void HandleRotRectRoiMouseUp(Point pos)
         {
             isDraggingRotRect = false;
             isDraggingRotRectCorner = false;
@@ -1100,25 +1267,6 @@ namespace HyImageShow.ImageShow
             draggingCornerIndex = -1;
             for (int i = 0; i < 4; i++) AnimateScale(rotRectRoiCornerScales[i], 1.0);
             AnimateScale(rotRectRoiRotateScale, 1.0);
-        }
-        private void DisableRotRectRoiMode()
-        {
-            MainCanvas.MouseLeftButtonDown -= MainCanvas_RotRectRoi_MouseLeftButtonDown;
-            MainCanvas.MouseMove -= MainCanvas_RotRectRoi_MouseMove;
-            MainCanvas.MouseLeftButtonUp -= MainCanvas_RotRectRoi_MouseLeftButtonUp;
-            MainCanvas.Cursor = Cursors.Arrow;
-            isRotRectRoiMode = false;
-            RemoveRotRectRoi();
-            // 重置按鈕狀態
-            var buttons = FindVisualChildren<Button>(this);
-            foreach (var button in buttons)
-            {
-                if (button.Content.ToString() == "旋轉ROI")
-                {
-                    SetButtonActiveState(button, false);
-                    break;
-                }
-            }
         }
         private int HitTestRotRectRoi(Point pos)
         {
@@ -1143,6 +1291,11 @@ namespace HyImageShow.ImageShow
             // 本體（多邊形內）
             if (IsPointInPolygon(pos, corners)) return 5;
             return -1;
+        }
+        private bool IsRotRectRoiHitTest(Point pos)
+        {
+            if (rotRectRoiClickCount < 2) return true;
+            return HitTestRotRectRoi(pos) >= 0;
         }
         private void RemoveRotRectRoi()
         {
@@ -1263,6 +1416,7 @@ namespace HyImageShow.ImageShow
         #endregion
 
         #region Ellipse ROI
+
         private void EllipseRoiButton_Click(object sender, RoutedEventArgs e)
         {
             if (!isEllipseRoiMode)
@@ -1280,16 +1434,10 @@ namespace HyImageShow.ImageShow
         }
         private void EnableEllipseRoiMode()
         {
-            MainCanvas.MouseLeftButtonDown += MainCanvas_EllipseRoi_MouseLeftButtonDown;
-            MainCanvas.MouseMove += MainCanvas_EllipseRoi_MouseMove;
-            MainCanvas.MouseLeftButtonUp += MainCanvas_EllipseRoi_MouseLeftButtonUp;
             MainCanvas.Cursor = Cursors.Cross;
         }
         private void DisableEllipseRoiMode()
         {
-            MainCanvas.MouseLeftButtonDown -= MainCanvas_EllipseRoi_MouseLeftButtonDown;
-            MainCanvas.MouseMove -= MainCanvas_EllipseRoi_MouseMove;
-            MainCanvas.MouseLeftButtonUp -= MainCanvas_EllipseRoi_MouseLeftButtonUp;
             MainCanvas.Cursor = Cursors.Arrow;
             isEllipseRoiMode = false;
             RemoveEllipseRoi();
@@ -1316,9 +1464,14 @@ namespace HyImageShow.ImageShow
             ellipseRoiLabelBorder = null; // 新增：設為 null
             ellipseRoiClickCount = 0;
         }
-        private void MainCanvas_EllipseRoi_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        private bool IsEllipseRoiHitTest(Point pos)
         {
-            Point pos = e.GetPosition(MainCanvas);
+            if (ellipseRoiClickCount < 2) return true;
+            return (pos - ellipseRoiCenter).Length < 14 ||
+                   Math.Abs((pos - (ellipseRoiCenter + new Vector(ellipseRoiRadius, 0))).Length) < 14;
+        }
+        private void HandleEllipseRoiMouseDown(Point pos)
+        {
             if (ellipseRoiClickCount < 2)
             {
                 if (ellipseRoiClickCount == 0)
@@ -1326,29 +1479,30 @@ namespace HyImageShow.ImageShow
                     ellipseRoiCenter = pos;
                     ellipseRoiRadius = 60;
                     DrawEllipseRoi();
-                    ellipseRoiClickCount = 2; // 直接進入可拖曳狀態
+                    ellipseRoiClickCount = 2;
                 }
                 return;
             }
+
             if ((pos - ellipseRoiCenter).Length < 14)
             {
                 isDraggingEllipseRoiCenter = true;
                 ellipseRoiDragStart = pos;
                 ellipseRoiDragStartCenter = ellipseRoiCenter;
-                AnimateScale(ellipseRoiCenterScale, 1.4); // 補動畫
+                AnimateScale(ellipseRoiCenterScale, 1.4);
             }
             else if (Math.Abs((pos - (ellipseRoiCenter + new Vector(ellipseRoiRadius, 0))).Length) < 14)
             {
                 isDraggingEllipseRoiRadius = true;
                 ellipseRoiDragStart = pos;
                 ellipseRoiDragStartRadius = ellipseRoiRadius;
-                AnimateScale(ellipseRoiRadiusScale, 1.4); // 補動畫
+                AnimateScale(ellipseRoiRadiusScale, 1.4);
             }
         }
-        private void MainCanvas_EllipseRoi_MouseMove(object sender, MouseEventArgs e)
+        private void HandleEllipseRoiMouseMove(Point pos)
         {
             if (ellipseRoiClickCount < 2) return;
-            Point pos = e.GetPosition(MainCanvas);
+
             if (isDraggingEllipseRoiCenter)
             {
                 Vector delta = pos - ellipseRoiDragStart;
@@ -1363,7 +1517,7 @@ namespace HyImageShow.ImageShow
                 DrawEllipseRoi();
             }
         }
-        private void MainCanvas_EllipseRoi_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        private void HandleEllipseRoiMouseUp(Point pos)
         {
             isDraggingEllipseRoiCenter = false;
             isDraggingEllipseRoiRadius = false;
@@ -1480,16 +1634,10 @@ namespace HyImageShow.ImageShow
         }
         private void EnableDrawLineMode()
         {
-            MainCanvas.MouseLeftButtonDown += MainCanvas_DrawLine_MouseLeftButtonDown;
-            MainCanvas.MouseMove += MainCanvas_DrawLine_MouseMove;
-            MainCanvas.MouseLeftButtonUp += MainCanvas_DrawLine_MouseLeftButtonUp;
             MainCanvas.Cursor = Cursors.Cross;
         }
         private void DisableDrawLineMode()
         {
-            MainCanvas.MouseLeftButtonDown -= MainCanvas_DrawLine_MouseLeftButtonDown;
-            MainCanvas.MouseMove -= MainCanvas_DrawLine_MouseMove;
-            MainCanvas.MouseLeftButtonUp -= MainCanvas_DrawLine_MouseLeftButtonUp;
             MainCanvas.Cursor = Cursors.Arrow;
             isDrawLineMode = false;
             RemoveDrawLine();
@@ -1529,9 +1677,19 @@ namespace HyImageShow.ImageShow
             isDraggingDrawLine = false;
             isDrawingLine = false;
         }
-        private void MainCanvas_DrawLine_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        private bool IsDrawLineHitTest(Point pos)
         {
-            Point pos = e.GetPosition(MainCanvas);
+            if (drawLineClickCount == 0) return true;
+            if (drawLineClickCount == 2)
+            {
+                return IsPointNear(pos, drawLineP1) || IsPointNear(pos, drawLineP2) ||
+                       IsPointNearLine(pos, drawLineP1, drawLineP2, 10);
+            }
+            return false;
+        }
+
+        private void HandleDrawLineMouseDown(Point pos)
+        {
             if (drawLineClickCount == 0)
             {
                 drawLineP1 = pos;
@@ -1557,9 +1715,8 @@ namespace HyImageShow.ImageShow
                 }
             }
         }
-        private void MainCanvas_DrawLine_MouseMove(object sender, MouseEventArgs e)
+        private void HandleDrawLineMouseMove(Point pos)
         {
-            Point pos = e.GetPosition(MainCanvas);
             if (drawLineClickCount == 1 && isDrawingLine)
             {
                 drawLineP2 = pos;
@@ -1587,7 +1744,7 @@ namespace HyImageShow.ImageShow
                 }
             }
         }
-        private void MainCanvas_DrawLine_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        private void HandleDrawLineMouseUp(Point pos)
         {
             if (drawLineClickCount == 1 && isDrawingLine)
             {
@@ -1733,7 +1890,6 @@ namespace HyImageShow.ImageShow
             // 拖曳動畫
             AnimateDrawLinePointScale();
         }
-
         private void AnimateDrawLinePointScale()
         {
             double scale1 = isDraggingDrawLineP1 ? 1.4 : 1.0;
@@ -1765,12 +1921,8 @@ namespace HyImageShow.ImageShow
                 SetButtonActiveState(sender as Button, isPolygonRoiMode);
             }
         }
-
         private void EnablePolygonRoiMode()
         {
-            MainCanvas.MouseLeftButtonDown += MainCanvas_PolygonRoi_MouseLeftButtonDown;
-            MainCanvas.MouseMove += MainCanvas_PolygonRoi_MouseMove;
-            MainCanvas.MouseLeftButtonUp += MainCanvas_PolygonRoi_MouseLeftButtonUp;
             MainCanvas.MouseRightButtonDown += MainCanvas_PolygonRoi_MouseRightButtonDown;
             MainCanvas.Cursor = Cursors.Cross;
             polygonRoiPoints.Clear();
@@ -1779,9 +1931,6 @@ namespace HyImageShow.ImageShow
         }
         private void DisablePolygonRoiMode()
         {
-            MainCanvas.MouseLeftButtonDown -= MainCanvas_PolygonRoi_MouseLeftButtonDown;
-            MainCanvas.MouseMove -= MainCanvas_PolygonRoi_MouseMove;
-            MainCanvas.MouseLeftButtonUp -= MainCanvas_PolygonRoi_MouseLeftButtonUp;
             MainCanvas.MouseRightButtonDown -= MainCanvas_PolygonRoi_MouseRightButtonDown;
             MainCanvas.Cursor = Cursors.Arrow;
             isPolygonRoiMode = false;
@@ -1819,12 +1968,48 @@ namespace HyImageShow.ImageShow
             }
             return inside && isPolygonClosed; // 只有在多邊形封閉時才判斷點是否在多邊形內
         }
-        private void MainCanvas_PolygonRoi_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        private bool IsPointInPolygon(Point p, Point[] poly)
         {
-            Point pos = e.GetPosition(MainCanvas);
+            int n = poly.Length;
+            bool inside = false;
+            for (int i = 0, j = n - 1; i < n; j = i++)
+            {
+                if (((poly[i].Y > p.Y) != (poly[j].Y > p.Y)) &&
+                    (p.X < (poly[j].X - poly[i].X) * (p.Y - poly[i].Y) / (poly[j].Y - poly[i].Y) + poly[i].X))
+                    inside = !inside;
+            }
+            return inside;
+        }
+        private bool IsPolygonRoiHitTest(Point pos)
+        {
             if (!isPolygonClosed)
             {
-                // 檢查是否點擊到第一個點（允許12像素的誤差）
+                // 檢查是否點擊到第一個點（需要至少3個點才能封閉）
+                if (polygonRoiPoints.Count >= 3)
+                {
+                    Point firstPoint = polygonRoiPoints[0];
+                    if (Math.Abs(pos.X - firstPoint.X) < 12 && Math.Abs(pos.Y - firstPoint.Y) < 12)
+                    {
+                        return true;
+                    }
+                }
+                return true; // 可以新增點
+            }
+
+            // 檢查是否點擊到頂點
+            for (int i = 0; i < polygonRoiPoints.Count; i++)
+            {
+                if ((pos - polygonRoiPoints[i]).Length < 12) return true;
+            }
+
+            // 檢查是否點擊到多邊形內部
+            return IsPointInPolygonRoi(pos);
+        }
+        private void HandlePolygonRoiMouseDown(Point pos)
+        {
+            if (!isPolygonClosed)
+            {
+                // 檢查是否點擊到第一個點（需要至少3個點才能封閉）
                 if (polygonRoiPoints.Count >= 3)
                 {
                     Point firstPoint = polygonRoiPoints[0];
@@ -1835,24 +2020,22 @@ namespace HyImageShow.ImageShow
                         return;
                     }
                 }
-                // 新增頂點
+                // 新增點
                 polygonRoiPoints.Add(pos);
                 DrawPolygonRoi();
             }
             else
             {
-                // 拖曳頂點
                 for (int i = 0; i < polygonRoiPoints.Count; i++)
                 {
                     if ((pos - polygonRoiPoints[i]).Length < 12)
                     {
                         isDraggingPolygonDot = true;
                         draggingPolygonDotIndex = i;
-                        AnimateScale(polygonRoiDotScales[i], 1.4); // 補動畫
+                        AnimateScale(polygonRoiDotScales[i], 1.4);
                         return;
                     }
                 }
-                // 拖曳整個多邊形
                 if (IsPointInPolygonRoi(pos))
                 {
                     isDraggingPolygonBody = true;
@@ -1861,10 +2044,10 @@ namespace HyImageShow.ImageShow
                 }
             }
         }
-        private void MainCanvas_PolygonRoi_MouseMove(object sender, MouseEventArgs e)
+        private void HandlePolygonRoiMouseMove(Point pos)
         {
             if (!isPolygonClosed) return;
-            Point pos = e.GetPosition(MainCanvas);
+
             if (isDraggingPolygonDot && draggingPolygonDotIndex >= 0 && draggingPolygonDotIndex < polygonRoiPoints.Count)
             {
                 polygonRoiPoints[draggingPolygonDotIndex] = pos;
@@ -1880,7 +2063,7 @@ namespace HyImageShow.ImageShow
                 DrawPolygonRoi();
             }
         }
-        private void MainCanvas_PolygonRoi_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        private void HandlePolygonRoiMouseUp(Point pos)
         {
             isDraggingPolygonDot = false;
             draggingPolygonDotIndex = -1;
@@ -1912,8 +2095,62 @@ namespace HyImageShow.ImageShow
             for (int i = 0; i < polygonRoiPoints.Count; i++)
                 polygonRoiDotScales.Add(new ScaleTransform(1, 1));
 
-            if (polygonRoiPoints.Count < 2) return;
+            // 如果沒有點，直接返回
+            if (polygonRoiPoints.Count == 0) return;
 
+            // 只有一個點時，只顯示點，不繪製線條
+            if (polygonRoiPoints.Count == 1)
+            {
+                var dot = new Ellipse
+                {
+                    Width = 18,
+                    Height = 18,
+                    Fill = Brushes.White,
+                    Stroke = new SolidColorBrush(styleDict["polygon"].line),
+                    StrokeThickness = 3,
+                    Opacity = 0.98,
+                    Effect = new DropShadowEffect { Color = styleDict["polygon"].glow, BlurRadius = 8, ShadowDepth = 0, Opacity = 0.7 },
+                    RenderTransform = polygonRoiDotScales[0],
+                    RenderTransformOrigin = new Point(0.5, 0.5),
+                    IsHitTestVisible = false
+                };
+                Canvas.SetLeft(dot, polygonRoiPoints[0].X - 9);
+                Canvas.SetTop(dot, polygonRoiPoints[0].Y - 9);
+                MainCanvas.Children.Add(dot);
+                polygonRoiDots.Add(dot);
+
+                if (showLabels)
+                {
+                    var labelText = new TextBlock
+                    {
+                        Text = $"({polygonRoiPoints[0].X:F0}, {polygonRoiPoints[0].Y:F0})",
+                        Foreground = new SolidColorBrush(styleDict["polygon"].labelFg),
+                        FontWeight = FontWeights.Bold,
+                        FontSize = 14,
+                        FontFamily = new FontFamily("Segoe UI"),
+                        Background = Brushes.Transparent,
+                        Padding = new Thickness(0),
+                        TextAlignment = TextAlignment.Center
+                    };
+                    var labelBorder = new Border
+                    {
+                        Background = new SolidColorBrush(styleDict["polygon"].labelBg),
+                        CornerRadius = new CornerRadius(8),
+                        Child = labelText,
+                        Effect = new DropShadowEffect { Color = Colors.Gray, BlurRadius = 6, ShadowDepth = 2, Opacity = 0.5 },
+                        Opacity = 0.98,
+                        Padding = new Thickness(6, 2, 6, 2)
+                    };
+                    var (offsetX, offsetY) = GetLabelOffset(polygonRoiPoints[0], MainCanvas.ActualWidth, MainCanvas.ActualHeight);
+                    Canvas.SetLeft(labelBorder, polygonRoiPoints[0].X + offsetX);
+                    Canvas.SetTop(labelBorder, polygonRoiPoints[0].Y + offsetY);
+                    MainCanvas.Children.Add(labelBorder);
+                    polygonRoiLabelBorders.Add(labelBorder);
+                }
+                return;
+            }
+
+            // 兩個點以上時，繪製線條和多邊形
             var points = new PointCollection(polygonRoiPoints);
             if (isPolygonClosed)
             {
@@ -2004,19 +2241,18 @@ namespace HyImageShow.ImageShow
 
         private void EnableArcRoiMode()
         {
-            MainCanvas.MouseLeftButtonDown += MainCanvas_ArcRoi_MouseLeftButtonDown;
-            MainCanvas.MouseMove += MainCanvas_ArcRoi_MouseMove;
-            MainCanvas.MouseLeftButtonUp += MainCanvas_ArcRoi_MouseLeftButtonUp;
             MainCanvas.Cursor = Cursors.Cross;
             arcRoiClickCount = 0;
             RemoveArcRoi();
         }
 
+        private void MainCanvas_MouseMove(object sender, MouseEventArgs e)
+        {
+
+        }
+
         private void DisableArcRoiMode()
         {
-            MainCanvas.MouseLeftButtonDown -= MainCanvas_ArcRoi_MouseLeftButtonDown;
-            MainCanvas.MouseMove -= MainCanvas_ArcRoi_MouseMove;
-            MainCanvas.MouseLeftButtonUp -= MainCanvas_ArcRoi_MouseLeftButtonUp;
             MainCanvas.Cursor = Cursors.Arrow;
             isArcRoiMode = false;
             RemoveArcRoi();
@@ -2050,10 +2286,20 @@ namespace HyImageShow.ImageShow
             isDraggingArcDot = false;
             draggingArcDotIndex = -1;
         }
-
-        private void MainCanvas_ArcRoi_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        private bool IsArcRoiHitTest(Point pos)
         {
-            Point pos = e.GetPosition(MainCanvas);
+            if (arcRoiClickCount < 3) return true;
+
+            // 檢查是否點擊到控制點
+            for (int i = 0; i < 3; i++)
+            {
+                if ((pos - arcRoiPoints[i]).Length < 12) return true;
+            }
+            return false;
+        }
+
+        private void HandleArcRoiMouseDown(Point pos)
+        {
             if (arcRoiClickCount < 3)
             {
                 arcRoiPoints[arcRoiClickCount] = pos;
@@ -2062,23 +2308,21 @@ namespace HyImageShow.ImageShow
             }
             else
             {
-                // 檢查是否點擊到控制點
                 for (int i = 0; i < 3; i++)
                 {
                     if ((pos - arcRoiPoints[i]).Length < 12)
                     {
                         isDraggingArcDot = true;
                         draggingArcDotIndex = i;
-                        AnimateScale(arcRoiDotScales[i], 1.4); // 補動畫
+                        AnimateScale(arcRoiDotScales[i], 1.4);
                         return;
                     }
                 }
             }
         }
 
-        private void MainCanvas_ArcRoi_MouseMove(object sender, MouseEventArgs e)
+        private void HandleArcRoiMouseMove(Point pos)
         {
-            Point pos = e.GetPosition(MainCanvas);
             if (isDraggingArcDot && draggingArcDotIndex >= 0 && draggingArcDotIndex < 3)
             {
                 arcRoiPoints[draggingArcDotIndex] = pos;
@@ -2086,7 +2330,7 @@ namespace HyImageShow.ImageShow
             }
         }
 
-        private void MainCanvas_ArcRoi_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        private void HandleArcRoiMouseUp(Point pos)
         {
             isDraggingArcDot = false;
             draggingArcDotIndex = -1;
@@ -2202,35 +2446,6 @@ namespace HyImageShow.ImageShow
             }
         }
 
-        #endregion
-
-        private void ClearButton_Click(object sender, RoutedEventArgs e)
-        {
-            // 清除所有功能
-            if (isRulerMode) DisableRulerMode();
-            if (isRotRectRoiMode) DisableRotRectRoiMode();
-            if (isEllipseRoiMode) DisableEllipseRoiMode();
-            if (isDrawLineMode) DisableDrawLineMode();
-            if (isPolygonRoiMode) DisablePolygonRoiMode();
-            if (isArcRoiMode) DisableArcRoiMode();
-            if (showCrossLines) RemoveCrossLines();
-
-            // 重置所有按鈕狀態
-            var buttons = FindVisualChildren<Button>(this);
-            foreach (var button in buttons)
-            {
-                SetButtonActiveState(button, false);
-            }
-        }
-
-
-
-        // 在類別內變數區加入：
-        private Border rotRectRoiLabelBorder = null;
-        private Border ellipseRoiLabelBorder = null;
-        private List<Border> polygonRoiLabelBorders = new List<Border>();
-        private Border arcRoiLabelBorder = null;
-
         // 新增：二次貝塞爾曲線長度計算與中點計算輔助方法
         private double CalcQuadraticBezierLength(Point p0, Point p1, Point p2, int steps = 32)
         {
@@ -2252,65 +2467,36 @@ namespace HyImageShow.ImageShow
             return new Point(x, y);
         }
 
-        private void AnimateScale(ScaleTransform scaleTransform, double scaleFactor)
-        {
-            var scaleAnimation = new DoubleAnimation
-            {
-                To = scaleFactor,
-                Duration = TimeSpan.FromMilliseconds(200),
-                FillBehavior = FillBehavior.Stop
-            };
-            scaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, scaleAnimation);
-            scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, scaleAnimation);
-        }
+        #endregion
 
-        private void SetButtonActiveState(Button button, bool isActive)
+        #region Clear
+
+        private void ClearButton_Click(object sender, RoutedEventArgs e)
         {
-            if (button != null)
+            // 清除所有功能
+            if (isRulerMode) DisableRulerMode();
+            if (isRotRectRoiMode) DisableRotRectRoiMode();
+            if (isEllipseRoiMode) DisableEllipseRoiMode();
+            if (isDrawLineMode) DisableDrawLineMode();
+            if (isPolygonRoiMode) DisablePolygonRoiMode();
+            if (isArcRoiMode) DisableArcRoiMode();
+            if (showCrossLines) RemoveCrossLines();
+
+            // 重置所有按鈕狀態
+            var buttons = FindVisualChildren<Button>(this);
+            foreach (var button in buttons)
             {
-                button.Tag = isActive ? "Active" : null;
+                SetButtonActiveState(button, false);
             }
         }
 
-        // 輔助方法：查找視覺樹中的所有指定類型的元素
-        private IEnumerable<T> FindVisualChildren<T>(DependencyObject depObj) where T : DependencyObject
-        {
-            if (depObj != null)
-            {
-                for (int i = 0; i < VisualTreeHelper.GetChildrenCount(depObj); i++)
-                {
-                    DependencyObject child = VisualTreeHelper.GetChild(depObj, i);
-                    if (child != null && child is T)
-                        yield return (T)child;
+        #endregion
 
-                    foreach (T childOfChild in FindVisualChildren<T>(child))
-                        yield return childOfChild;
-                }
-            }
-        }
 
-        // 輔助方法：根據端點位置決定標註偏移
-        private (double offsetX, double offsetY) GetLabelOffset(Point pt, double canvasWidth, double canvasHeight)
-        {
-            double offsetX = 16, offsetY = -16;
-            // 右下象限
-            if (pt.X > canvasWidth * 0.66 && pt.Y > canvasHeight * 0.66) { offsetX = -80; offsetY = -32; }
-            // 右上象限
-            else if (pt.X > canvasWidth * 0.66 && pt.Y < canvasHeight * 0.33) { offsetX = -80; offsetY = 16; }
-            // 左下象限
-            else if (pt.X < canvasWidth * 0.33 && pt.Y > canvasHeight * 0.66) { offsetX = 16; offsetY = -32; }
-            // 左上象限
-            else if (pt.X < canvasWidth * 0.33 && pt.Y < canvasHeight * 0.33) { offsetX = 16; offsetY = 16; }
-            // 右側
-            else if (pt.X > canvasWidth * 0.66) { offsetX = -80; }
-            // 左側
-            else if (pt.X < canvasWidth * 0.33) { offsetX = 16; }
-            // 下方
-            else if (pt.Y > canvasHeight * 0.66) { offsetY = -32; }
-            // 上方
-            else if (pt.Y < canvasHeight * 0.33) { offsetY = 16; }
-            return (offsetX, offsetY);
-        }
+
+
+
+
     }
 }
 
