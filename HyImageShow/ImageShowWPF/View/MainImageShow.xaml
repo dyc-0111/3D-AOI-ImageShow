@@ -72,7 +72,12 @@
                 <Button Content="圓形ROI" Click="EllipseRoiButton_Click" Style="{StaticResource ToolButtonStyle}"/>
                 <Button Content="畫線" Click="DrawLineButton_Click" Style="{StaticResource ToolButtonStyle}"/>
                 <Button Content="多邊形ROI" Click="PolygonRoiButton_Click" Style="{StaticResource ToolButtonStyle}"/>
-                <Button Content="弧形ROI" Click="ArcRoiButton_Click" Style="{StaticResource ToolButtonStyle}"/>
+                <Button Content="貝氏曲線ROI"
+                        Click="BezierArcRoiButton_Click"
+                        Style="{StaticResource ToolButtonStyle}" />
+                <Button Content="圓弧曲線ROI"
+                        Click="CircularArcRoiButton_Click"
+                        Style="{StaticResource ToolButtonStyle}" />
             </StackPanel>
             <Button Grid.Row="1" Content="清空" Height="40" Margin="10,10" Click="ClearButton_Click" Style="{StaticResource ToolButtonStyle}"/>
         </Grid>

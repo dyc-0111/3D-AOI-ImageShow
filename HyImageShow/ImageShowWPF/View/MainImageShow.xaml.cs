@@ -43,7 +43,8 @@ namespace HyImageShow.ImageShow
             EllipseRoi = 4,
             DrawLine = 5,
             PolygonRoi = 6,
-            ArcRoi = 7
+            ArcRoi = 7,
+            CircularArcRoi = 8
         }
         private DragPriority currentDragPriority = DragPriority.None;
 
@@ -138,6 +139,11 @@ namespace HyImageShow.ImageShow
         private bool isDraggingPolygonBody = false;
         private Point polygonDragStart;
         private List<Point> polygonDragStartPoints = null;
+        private bool isDraggingPolygonRotate = false; // 是否正在拖曳多邊形旋轉點
+        private double polygonRotateAngle = 0;        // 多邊形目前旋轉角度（度）
+        private double polygonRotateStartAngle = 0;   // 拖曳開始時的角度
+        private Point polygonRotateDragStart;         // 拖曳開始時滑鼠位置
+        private Ellipse polygonRoiRotateDot = null;   // 旋轉控制點
 
         // 弧形ROI功能
         private bool isArcRoiMode = false;
@@ -148,6 +154,21 @@ namespace HyImageShow.ImageShow
         private bool isDraggingArcDot = false;          // 是否正在拖曳控制點
         private int draggingArcDotIndex = -1;           // 正在拖曳的控制點索引
         private Line arcRoiPreviewLine = null;          // 預覽線
+
+        // 圓弧ROI相關變數
+        private bool isCircularArcRoiMode = false;
+        private Path circularArcRoi = null;
+        private Ellipse[] circularArcRoiDots = new Ellipse[3];  // 圓心、起點、終點
+        private Point[] circularArcRoiPoints = new Point[3];    // 圓心、起點、終點座標
+        private int circularArcRoiClickCount = 0;               // 點擊計數
+        private bool isDraggingCircularArcDot = false;          // 是否正在拖曳控制點
+        private int draggingCircularArcDotIndex = -1;           // 正在拖曳的控制點索引
+        private double circularArcRoiRadius = 0;                // 圓弧半徑
+        private double circularArcRoiStartAngle = 0;            // 起始角度
+        private double circularArcRoiEndAngle = 0;              // 結束角度
+        private bool circularArcRoiIsLargeArc = false;          // 是否為大圓弧
+        private bool circularArcRoiSweepFlag = false;           // 掃描方向
+        private Border circularArcRoiLabelBorder = null;        // 標籤邊框
 
         private Point rotRectDragStart;
         private Point rotRectDragStartCenter;
@@ -164,6 +185,7 @@ namespace HyImageShow.ImageShow
             {"polygon", (Color.FromRgb(220, 180, 40), Color.FromRgb(191, 160, 0), Color.FromArgb(220, 240, 220, 120), Color.FromRgb(106, 74, 20))}, // 黃
             {"arc",     (Color.FromRgb(40, 170, 110), Color.FromRgb(30, 122, 74), Color.FromArgb(220, 180, 240, 200), Color.FromRgb(30, 122, 74))}, // 綠
             {"line",    (Color.FromRgb(0, 188, 212), Color.FromRgb(0, 150, 167), Color.FromArgb(220, 178, 235, 242), Color.FromRgb(0, 105, 120))}, // 青
+            {"circulararc", (Color.FromRgb(255, 64, 129), Color.FromRgb(194, 24, 91), Color.FromArgb(220, 255, 205, 235), Color.FromRgb(136, 14, 79))}, // 粉紅
         };
 
         private ScaleTransform[] rotRectRoiCornerScales = { new ScaleTransform(1, 1), new ScaleTransform(1, 1), new ScaleTransform(1, 1), new ScaleTransform(1, 1) };
@@ -172,11 +194,14 @@ namespace HyImageShow.ImageShow
         private ScaleTransform ellipseRoiRadiusScale = new ScaleTransform(1, 1);
         private List<ScaleTransform> polygonRoiDotScales = new List<ScaleTransform>();
         private ScaleTransform[] arcRoiDotScales = { new ScaleTransform(1, 1), new ScaleTransform(1, 1), new ScaleTransform(1, 1) };
+        private ScaleTransform[] circularArcRoiDotScales = { new ScaleTransform(1, 1), new ScaleTransform(1, 1), new ScaleTransform(1, 1) };
 
         private Border rotRectRoiLabelBorder = null;
         private Border ellipseRoiLabelBorder = null;
         private List<Border> polygonRoiLabelBorders = new List<Border>();
         private Border arcRoiLabelBorder = null;
+
+        private Line circularArcRoiPreviewLine = null;
 
         #endregion
 
@@ -185,7 +210,7 @@ namespace HyImageShow.ImageShow
         private void MainImageShow_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.F3 && (isRulerMode || isRotRectRoiMode || isDrawLineMode ||
-                isEllipseRoiMode || isPolygonRoiMode || isArcRoiMode)) // 所有ROI模式下都可切換
+                isEllipseRoiMode || isPolygonRoiMode || isArcRoiMode || isCircularArcRoiMode)) // 所有ROI模式下都可切換
             {
                 showLabels = !showLabels;
                 if (isRulerMode) DrawRuler();
@@ -193,7 +218,8 @@ namespace HyImageShow.ImageShow
                 if (isDrawLineMode) DrawLineOnCanvas();
                 if (isEllipseRoiMode) DrawEllipseRoi();
                 if (isPolygonRoiMode) DrawPolygonRoi();
-                if (isArcRoiMode) DrawArcRoi();
+                if (isArcRoiMode) DrawBezierArcRoi();
+                if (isCircularArcRoiMode) DrawCircularArcRoi();
             }
         }
 
@@ -335,9 +361,14 @@ namespace HyImageShow.ImageShow
             DragPriority highestPriority = DragPriority.None;
             
             // 檢查所有模式，找出最高優先權的命中模式
-            if (isArcRoiMode && IsArcRoiHitTest(pos))
+            if (isCircularArcRoiMode && IsCircularArcRoiHitTest(pos))
             {
-                highestPriority = DragPriority.ArcRoi;
+                highestPriority = DragPriority.CircularArcRoi;
+            }
+            if (isArcRoiMode && IsBezierArcRoiHitTest(pos))
+            {
+                if ((int)highestPriority < (int)DragPriority.ArcRoi)
+                    highestPriority = DragPriority.ArcRoi;
             }
             if (isPolygonRoiMode && IsPolygonRoiHitTest(pos))
             {
@@ -369,8 +400,11 @@ namespace HyImageShow.ImageShow
             currentDragPriority = highestPriority;
             switch (highestPriority)
             {
+                case DragPriority.CircularArcRoi:
+                    HandleCircularArcRoiMouseDown(pos);
+                    break;
                 case DragPriority.ArcRoi:
-                    HandleArcRoiMouseDown(pos);
+                    HandleBezierArcRoiMouseDown(pos);
                     break;
                 case DragPriority.PolygonRoi:
                     HandlePolygonRoiMouseDown(pos);
@@ -397,6 +431,9 @@ namespace HyImageShow.ImageShow
             // 根據當前優先權處理滑鼠移動
             switch (currentDragPriority)
             {
+                case DragPriority.CircularArcRoi:
+                    HandleCircularArcRoiMouseMove(pos);
+                    break;
                 case DragPriority.Ruler:
                     HandleRulerMouseMove(pos);
                     break;
@@ -413,7 +450,7 @@ namespace HyImageShow.ImageShow
                     HandlePolygonRoiMouseMove(pos);
                     break;
                 case DragPriority.ArcRoi:
-                    HandleArcRoiMouseMove(pos);
+                    HandleBezierArcRoiMouseMove(pos);
                     break;
                 case DragPriority.Canvas:
                     if (isDraggingCanvas)
@@ -438,6 +475,9 @@ namespace HyImageShow.ImageShow
             // 根據當前優先權處理滑鼠釋放
             switch (currentDragPriority)
             {
+                case DragPriority.CircularArcRoi:
+                    HandleCircularArcRoiMouseUp(pos);
+                    break;
                 case DragPriority.Ruler:
                     HandleRulerMouseUp(pos);
                     break;
@@ -454,7 +494,7 @@ namespace HyImageShow.ImageShow
                     HandlePolygonRoiMouseUp(pos);
                     break;
                 case DragPriority.ArcRoi:
-                    HandleArcRoiMouseUp(pos);
+                    HandleBezierArcRoiMouseUp(pos);
                     break;
             }
 
@@ -1982,6 +2022,27 @@ namespace HyImageShow.ImageShow
         }
         private bool IsPolygonRoiHitTest(Point pos)
         {
+            // 1. 命中旋轉點
+            if (isPolygonClosed && polygonRoiRotateDot != null)
+            {
+                double cx = 0, cy = 0;
+                foreach (var pt in polygonRoiPoints)
+                {
+                    cx += pt.X;
+                    cy += pt.Y;
+                }
+                cx /= polygonRoiPoints.Count;
+                cy /= polygonRoiPoints.Count;
+                double angleRad = polygonRotateAngle * Math.PI / 180.0;
+                double offset = 40;
+                Point centroid = new Point(cx, cy);
+                Point rotateDotPos = new Point(
+                    centroid.X + offset * Math.Cos(angleRad - Math.PI / 2),
+                    centroid.Y + offset * Math.Sin(angleRad - Math.PI / 2)
+                );
+                if ((pos - rotateDotPos).Length < 14) return true;
+            }
+
             if (!isPolygonClosed)
             {
                 // 檢查是否點擊到第一個點（需要至少3個點才能封閉）
@@ -2007,6 +2068,34 @@ namespace HyImageShow.ImageShow
         }
         private void HandlePolygonRoiMouseDown(Point pos)
         {
+            if (isPolygonClosed && polygonRoiRotateDot != null)
+            {
+                // 命中旋轉點
+                double cx = 0, cy = 0;
+                foreach (var pt in polygonRoiPoints)
+                {
+                    cx += pt.X;
+                    cy += pt.Y;
+                }
+                cx /= polygonRoiPoints.Count;
+                cy /= polygonRoiPoints.Count;
+                double angleRad = polygonRotateAngle * Math.PI / 180.0;
+                double offset = 40;
+                Point centroid = new Point(cx, cy);
+                Point rotateDotPos = new Point(
+                    centroid.X + offset * Math.Cos(angleRad - Math.PI / 2),
+                    centroid.Y + offset * Math.Sin(angleRad - Math.PI / 2)
+                );
+                if ((pos - rotateDotPos).Length < 14)
+                {
+                    isDraggingPolygonRotate = true;
+                    polygonRotateDragStart = pos;
+                    // 計算起始角度
+                    polygonRotateStartAngle = polygonRotateAngle;
+                    return;
+                }
+            }
+
             if (!isPolygonClosed)
             {
                 // 檢查是否點擊到第一個點（需要至少3個點才能封閉）
@@ -2015,6 +2104,7 @@ namespace HyImageShow.ImageShow
                     Point firstPoint = polygonRoiPoints[0];
                     if (Math.Abs(pos.X - firstPoint.X) < 12 && Math.Abs(pos.Y - firstPoint.Y) < 12)
                     {
+                        // 封閉多邊形
                         isPolygonClosed = true;
                         DrawPolygonRoi();
                         return;
@@ -2023,34 +2113,71 @@ namespace HyImageShow.ImageShow
                 // 新增點
                 polygonRoiPoints.Add(pos);
                 DrawPolygonRoi();
+                return;
             }
-            else
+
+            // 檢查是否點擊到頂點
+            for (int i = 0; i < polygonRoiPoints.Count; i++)
             {
-                for (int i = 0; i < polygonRoiPoints.Count; i++)
+                if ((pos - polygonRoiPoints[i]).Length < 12)
                 {
-                    if ((pos - polygonRoiPoints[i]).Length < 12)
-                    {
-                        isDraggingPolygonDot = true;
-                        draggingPolygonDotIndex = i;
-                        AnimateScale(polygonRoiDotScales[i], 1.4);
-                        return;
-                    }
-                }
-                if (IsPointInPolygonRoi(pos))
-                {
-                    isDraggingPolygonBody = true;
+                    isDraggingPolygonDot = true;
+                    draggingPolygonDotIndex = i;
                     polygonDragStart = pos;
                     polygonDragStartPoints = new List<Point>(polygonRoiPoints);
+                    AnimateScale(polygonRoiDotScales[i], 1.4);
+                    return;
                 }
+            }
+
+            // 檢查是否點擊到多邊形內部
+            if (IsPointInPolygonRoi(pos))
+            {
+                isDraggingPolygonBody = true;
+                polygonDragStart = pos;
+                polygonDragStartPoints = new List<Point>(polygonRoiPoints);
             }
         }
         private void HandlePolygonRoiMouseMove(Point pos)
         {
-            if (!isPolygonClosed) return;
-
-            if (isDraggingPolygonDot && draggingPolygonDotIndex >= 0 && draggingPolygonDotIndex < polygonRoiPoints.Count)
+            if (isDraggingPolygonRotate && isPolygonClosed && polygonRoiPoints.Count >= 3)
             {
-                polygonRoiPoints[draggingPolygonDotIndex] = pos;
+                // 計算重心
+                double cx = 0, cy = 0;
+                foreach (var pt in polygonRoiPoints)
+                {
+                    cx += pt.X;
+                    cy += pt.Y;
+                }
+                cx /= polygonRoiPoints.Count;
+                cy /= polygonRoiPoints.Count;
+                Point centroid = new Point(cx, cy);
+                // 起始向量
+                Vector v0 = polygonRotateDragStart - centroid;
+                Vector v1 = pos - centroid;
+                double a0 = Math.Atan2(v0.Y, v0.X);
+                double a1 = Math.Atan2(v1.Y, v1.X);
+                double deltaAngle = (a1 - a0) * 180.0 / Math.PI;
+                polygonRotateAngle = polygonRotateStartAngle + deltaAngle;
+                // 旋轉所有頂點
+                double rad = (polygonRotateAngle - polygonRotateStartAngle) * Math.PI / 180.0;
+                List<Point> rotated = new List<Point>();
+                foreach (var pt in polygonDragStartPoints ?? polygonRoiPoints)
+                {
+                    Vector v = pt - centroid;
+                    double x = v.X * Math.Cos(rad) - v.Y * Math.Sin(rad);
+                    double y = v.X * Math.Sin(rad) + v.Y * Math.Cos(rad);
+                    rotated.Add(new Point(centroid.X + x, centroid.Y + y));
+                }
+                polygonRoiPoints = rotated;
+                DrawPolygonRoi();
+                return;
+            }
+
+            if (isDraggingPolygonDot && draggingPolygonDotIndex >= 0 && polygonDragStartPoints != null)
+            {
+                Vector delta = pos - polygonDragStart;
+                polygonRoiPoints[draggingPolygonDotIndex] = polygonDragStartPoints[draggingPolygonDotIndex] + delta;
                 DrawPolygonRoi();
             }
             else if (isDraggingPolygonBody && polygonDragStartPoints != null)
@@ -2065,6 +2192,12 @@ namespace HyImageShow.ImageShow
         }
         private void HandlePolygonRoiMouseUp(Point pos)
         {
+            if (isDraggingPolygonRotate)
+            {
+                isDraggingPolygonRotate = false;
+                polygonDragStartPoints = null;
+                return;
+            }
             isDraggingPolygonDot = false;
             draggingPolygonDotIndex = -1;
             isDraggingPolygonBody = false;
@@ -2217,45 +2350,81 @@ namespace HyImageShow.ImageShow
                     polygonRoiLabelBorders.Add(labelBorder);
                 }
             }
+
+            // 移除舊的旋轉點
+            if (polygonRoiRotateDot != null) MainCanvas.Children.Remove(polygonRoiRotateDot);
+            polygonRoiRotateDot = null;
+
+            // 畫旋轉控制點（多邊形封閉且頂點數>=3時才顯示）
+            if (isPolygonClosed && polygonRoiPoints.Count >= 3)
+            {
+                // 計算重心
+                double cx = 0, cy = 0;
+                foreach (var pt in polygonRoiPoints)
+                {
+                    cx += pt.X;
+                    cy += pt.Y;
+                }
+                cx /= polygonRoiPoints.Count;
+                cy /= polygonRoiPoints.Count;
+                Point centroid = new Point(cx, cy);
+                // 旋轉點位置：重心往上方（Y軸負方向）偏移40像素
+                double angleRad = polygonRotateAngle * Math.PI / 180.0;
+                double offset = 40;
+                Point rotateDotPos = new Point(
+                    centroid.X + offset * Math.Cos(angleRad - Math.PI / 2),
+                    centroid.Y + offset * Math.Sin(angleRad - Math.PI / 2)
+                );
+                polygonRoiRotateDot = new Ellipse
+                {
+                    Width = 18,
+                    Height = 18,
+                    Fill = Brushes.Yellow,
+                    Stroke = new SolidColorBrush(styleDict["polygon"].line),
+                    StrokeThickness = 3,
+                    Opacity = 0.98,
+                    Effect = new DropShadowEffect { Color = styleDict["polygon"].glow, BlurRadius = 8, ShadowDepth = 0, Opacity = 0.7 },
+                    RenderTransformOrigin = new Point(0.5, 0.5),
+                    IsHitTestVisible = false
+                };
+                Canvas.SetLeft(polygonRoiRotateDot, rotateDotPos.X - 9);
+                Canvas.SetTop(polygonRoiRotateDot, rotateDotPos.Y - 9);
+                MainCanvas.Children.Add(polygonRoiRotateDot);
+            }
         }
 
         #endregion
 
-        #region Arc ROI
+        #region Bezier Arc ROI
 
-        private void ArcRoiButton_Click(object sender, RoutedEventArgs e)
+        private void BezierArcRoiButton_Click(object sender, RoutedEventArgs e)
         {
             if (!isArcRoiMode)
             {
                 isArcRoiMode = true;
-                EnableArcRoiMode();
+                EnableBezierArcRoiMode();
                 SetButtonActiveState(sender as Button, isArcRoiMode);
             }
             else
             {
                 isArcRoiMode = false;
-                DisableArcRoiMode();
+                DisableBezierArcRoiMode();
                 SetButtonActiveState(sender as Button, isArcRoiMode);
             }
         }
 
-        private void EnableArcRoiMode()
+        private void EnableBezierArcRoiMode()
         {
             MainCanvas.Cursor = Cursors.Cross;
             arcRoiClickCount = 0;
-            RemoveArcRoi();
+            RemoveBezierArcRoi();
         }
 
-        private void MainCanvas_MouseMove(object sender, MouseEventArgs e)
-        {
-
-        }
-
-        private void DisableArcRoiMode()
+        private void DisableBezierArcRoiMode()
         {
             MainCanvas.Cursor = Cursors.Arrow;
             isArcRoiMode = false;
-            RemoveArcRoi();
+            RemoveBezierArcRoi();
             // 重置按鈕狀態
             var buttons = FindVisualChildren<Button>(this);
             foreach (var button in buttons)
@@ -2268,7 +2437,7 @@ namespace HyImageShow.ImageShow
             }
         }
 
-        private void RemoveArcRoi()
+        private void RemoveBezierArcRoi()
         {
             if (arcRoi != null) MainCanvas.Children.Remove(arcRoi);
             if (arcRoiPreviewLine != null) MainCanvas.Children.Remove(arcRoiPreviewLine);
@@ -2286,7 +2455,7 @@ namespace HyImageShow.ImageShow
             isDraggingArcDot = false;
             draggingArcDotIndex = -1;
         }
-        private bool IsArcRoiHitTest(Point pos)
+        private bool IsBezierArcRoiHitTest(Point pos)
         {
             if (arcRoiClickCount < 3) return true;
 
@@ -2298,13 +2467,13 @@ namespace HyImageShow.ImageShow
             return false;
         }
 
-        private void HandleArcRoiMouseDown(Point pos)
+        private void HandleBezierArcRoiMouseDown(Point pos)
         {
             if (arcRoiClickCount < 3)
             {
                 arcRoiPoints[arcRoiClickCount] = pos;
                 arcRoiClickCount++;
-                DrawArcRoi();
+                DrawBezierArcRoi();
             }
             else
             {
@@ -2321,23 +2490,47 @@ namespace HyImageShow.ImageShow
             }
         }
 
-        private void HandleArcRoiMouseMove(Point pos)
+        private void HandleBezierArcRoiMouseMove(Point pos)
         {
             if (isDraggingArcDot && draggingArcDotIndex >= 0 && draggingArcDotIndex < 3)
             {
                 arcRoiPoints[draggingArcDotIndex] = pos;
-                DrawArcRoi();
+                DrawBezierArcRoi();
+            }
+            else if (arcRoiClickCount < 3)
+            {
+                // 預覽模式：顯示即將新增的點
+                if (arcRoiPreviewLine != null) MainCanvas.Children.Remove(arcRoiPreviewLine);
+                
+                if (arcRoiClickCount > 0)
+                {
+                    arcRoiPreviewLine = new Line
+                    {
+                        X1 = arcRoiPoints[arcRoiClickCount - 1].X,
+                        Y1 = arcRoiPoints[arcRoiClickCount - 1].Y,
+                        X2 = pos.X,
+                        Y2 = pos.Y,
+                        Stroke = new SolidColorBrush(styleDict["arc"].line),
+                        StrokeThickness = 2,
+                        StrokeDashArray = new DoubleCollection { 5, 5 },
+                        Opacity = 0.6,
+                        IsHitTestVisible = false
+                    };
+                    MainCanvas.Children.Add(arcRoiPreviewLine);
+                }
             }
         }
 
-        private void HandleArcRoiMouseUp(Point pos)
+        private void HandleBezierArcRoiMouseUp(Point pos)
         {
-            isDraggingArcDot = false;
-            draggingArcDotIndex = -1;
-            for (int i = 0; i < arcRoiDotScales.Length; i++) AnimateScale(arcRoiDotScales[i], 1.0);
+            if (isDraggingArcDot)
+            {
+                isDraggingArcDot = false;
+                draggingArcDotIndex = -1;
+            }
         }
 
-        private void DrawArcRoi()
+        private void DrawBezierArcRoi()
         {
             if (arcRoi != null) MainCanvas.Children.Remove(arcRoi);
             foreach (var dot in arcRoiDots) MainCanvas.Children.Remove(dot);
@@ -2346,7 +2539,30 @@ namespace HyImageShow.ImageShow
             arcRoiDots = new Ellipse[3];
             arcRoiLabelBorder = null;
 
-            if (arcRoiClickCount < 2) return;
+            if (arcRoiClickCount < 1) return;
+
+            // 只點一個點時，顯示該點
+            if (arcRoiClickCount == 1)
+            {
+                var dot = new Ellipse
+                {
+                    Width = 18,
+                    Height = 18,
+                    Fill = Brushes.White,
+                    Stroke = new SolidColorBrush(styleDict["arc"].line),
+                    StrokeThickness = 3,
+                    Opacity = 0.98,
+                    Effect = new DropShadowEffect { Color = styleDict["arc"].glow, BlurRadius = 8, ShadowDepth = 0, Opacity = 0.7 },
+                    RenderTransform = arcRoiDotScales[0],
+                    RenderTransformOrigin = new Point(0.5, 0.5),
+                    IsHitTestVisible = false
+                };
+                Canvas.SetLeft(dot, arcRoiPoints[0].X - 9);
+                Canvas.SetTop(dot, arcRoiPoints[0].Y - 9);
+                MainCanvas.Children.Add(dot);
+                arcRoiDots[0] = dot;
+                return;
+            }
 
             // 建立弧形路徑
             PathFigure pathFigure = new PathFigure();
@@ -2360,8 +2576,8 @@ namespace HyImageShow.ImageShow
             }
             else if (arcRoiClickCount == 3)
             {
-                // 有三個點時，畫二次貝塞爾曲線
-                QuadraticBezierSegment bezierSegment = new QuadraticBezierSegment(arcRoiPoints[1], arcRoiPoints[2], true);
+                // 有三個點時，畫二次貝塞爾曲線（第三點為控制點，必經此點）
+                QuadraticBezierSegment bezierSegment = new QuadraticBezierSegment(arcRoiPoints[2], arcRoiPoints[1], true);
                 pathFigure.Segments.Add(bezierSegment);
             }
 
@@ -2386,11 +2602,11 @@ namespace HyImageShow.ImageShow
                 {
                     Width = 18,
                     Height = 18,
-                    Fill = (i == 1) ? new SolidColorBrush(Color.FromRgb(255, 235, 59)) : Brushes.White, // arcRoiPoints[1]黃色，其餘白色
-                    Stroke = (i == 1) ? new SolidColorBrush(Color.FromRgb(255, 87, 34)) : new SolidColorBrush(styleDict["arc"].line), // arcRoiPoints[1]亮橘色，其餘深綠色
+                    Fill = (i == 2) ? new SolidColorBrush(Color.FromRgb(255, 235, 59)) : Brushes.White, // 第三點黃色，其餘白色
+                    Stroke = (i == 2) ? new SolidColorBrush(Color.FromRgb(255, 87, 34)) : new SolidColorBrush(styleDict["arc"].line), // 第三點亮橘色，其餘綠色
                     StrokeThickness = 3,
                     Opacity = 0.98,
-                    Effect = (i == 1) ? new DropShadowEffect { Color = Color.FromRgb(255, 60, 0), BlurRadius = 18, ShadowDepth = 0, Opacity = 0.8 } : new DropShadowEffect { Color = styleDict["arc"].glow, BlurRadius = 8, ShadowDepth = 0, Opacity = 0.7 },
+                    Effect = (i == 2) ? new DropShadowEffect { Color = Color.FromRgb(255, 60, 0), BlurRadius = 18, ShadowDepth = 0, Opacity = 0.8 } : new DropShadowEffect { Color = styleDict["arc"].glow, BlurRadius = 8, ShadowDepth = 0, Opacity = 0.7 },
                     RenderTransform = arcRoiDotScales[i],
                     RenderTransformOrigin = new Point(0.5, 0.5),
                     IsHitTestVisible = false
@@ -2401,16 +2617,17 @@ namespace HyImageShow.ImageShow
                 arcRoiDots[i] = dot;
             }
 
+            // 恢復Label顯示
             if (showLabels && arcRoiClickCount == 3)
             {
-                double arcLength = CalcQuadraticBezierLength(arcRoiPoints[0], arcRoiPoints[1], arcRoiPoints[2]);
-                double chordLength = (arcRoiPoints[2] - arcRoiPoints[0]).Length;
-                string p0 = $"({arcRoiPoints[0].X:F0}, {arcRoiPoints[0].Y:F0})";
-                string p1 = $"({arcRoiPoints[1].X:F0}, {arcRoiPoints[1].Y:F0})";
-                string p2 = $"({arcRoiPoints[2].X:F0}, {arcRoiPoints[2].Y:F0})";
+                double arcLength = CalcQuadraticBezierLength(arcRoiPoints[0], arcRoiPoints[2], arcRoiPoints[1]);
+                double chordLength = (arcRoiPoints[1] - arcRoiPoints[0]).Length;
+                string start = $"起點: ({arcRoiPoints[0].X:F0}, {arcRoiPoints[0].Y:F0})";
+                string middle = $"中點: ({arcRoiPoints[2].X:F0}, {arcRoiPoints[2].Y:F0})";
+                string end = $"終點: ({arcRoiPoints[1].X:F0}, {arcRoiPoints[1].Y:F0})";
                 var labelText = new TextBlock
                 {
-                    Text = $"P0: {p0}\nP1: {p1}\nP2: {p2}\n弧長: {arcLength:F1}\n弦長: {chordLength:F1}",
+                    Text = $"{start}\n{middle}\n{end}\n弧長: {arcLength:F1}\n弦長: {chordLength:F1}",
                     Foreground = new SolidColorBrush(styleDict["arc"].labelFg),
                     FontWeight = FontWeights.Bold,
                     FontSize = 14,
@@ -2430,8 +2647,8 @@ namespace HyImageShow.ImageShow
                     Padding = new Thickness(6, 2, 6, 2)
                 };
                 // 計算弧線中點與法線方向
-                Point mid = GetQuadraticBezierPoint(arcRoiPoints[0], arcRoiPoints[1], arcRoiPoints[2], 0.5);
-                Vector tangent = 2 * (1 - 0.5) * (arcRoiPoints[1] - arcRoiPoints[0]) + 2 * 0.5 * (arcRoiPoints[2] - arcRoiPoints[1]);
+                Point mid = GetQuadraticBezierPoint(arcRoiPoints[0], arcRoiPoints[2], arcRoiPoints[1], 0.5);
+                Vector tangent = 2 * (1 - 0.5) * (arcRoiPoints[2] - arcRoiPoints[0]) + 2 * 0.5 * (arcRoiPoints[1] - arcRoiPoints[2]);
                 Vector normal = new Vector(-tangent.Y, tangent.X);
                 if (normal.Length > 0.1) normal.Normalize();
                 double offset = 40;
@@ -2446,7 +2663,7 @@ namespace HyImageShow.ImageShow
             }
         }
 
-        // 新增：二次貝塞爾曲線長度計算與中點計算輔助方法
+        // 二次貝塞爾曲線長度計算與中點計算輔助方法
         private double CalcQuadraticBezierLength(Point p0, Point p1, Point p2, int steps = 32)
         {
             double length = 0;
@@ -2479,7 +2696,8 @@ namespace HyImageShow.ImageShow
             if (isEllipseRoiMode) DisableEllipseRoiMode();
             if (isDrawLineMode) DisableDrawLineMode();
             if (isPolygonRoiMode) DisablePolygonRoiMode();
-            if (isArcRoiMode) DisableArcRoiMode();
+            if (isArcRoiMode) DisableBezierArcRoiMode();
+            if (isCircularArcRoiMode) DisableCircularArcRoiMode();
             if (showCrossLines) RemoveCrossLines();
 
             // 重置所有按鈕狀態
@@ -2492,10 +2710,402 @@ namespace HyImageShow.ImageShow
 
         #endregion
 
+        #region Circular Arc ROI
 
+        private void CircularArcRoiButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!isCircularArcRoiMode)
+            {
+                isCircularArcRoiMode = true;
+                EnableCircularArcRoiMode();
+                SetButtonActiveState(sender as Button, isCircularArcRoiMode);
+            }
+            else
+            {
+                isCircularArcRoiMode = false;
+                DisableCircularArcRoiMode();
+                SetButtonActiveState(sender as Button, isCircularArcRoiMode);
+            }
+        }
 
+        private void EnableCircularArcRoiMode()
+        {
+            MainCanvas.Cursor = Cursors.Cross;
+            circularArcRoiClickCount = 0;
+            RemoveCircularArcRoi();
+        }
 
+        private void DisableCircularArcRoiMode()
+        {
+            MainCanvas.Cursor = Cursors.Arrow;
+            isCircularArcRoiMode = false;
+            RemoveCircularArcRoi();
+            // 重置按鈕狀態
+            var buttons = FindVisualChildren<Button>(this);
+            foreach (var button in buttons)
+            {
+                if (button.Content.ToString() == "圓弧ROI")
+                {
+                    SetButtonActiveState(button, false);
+                    break;
+                }
+            }
+        }
 
+        private void RemoveCircularArcRoi()
+        {
+            if (circularArcRoi != null) MainCanvas.Children.Remove(circularArcRoi);
+            foreach (var dot in circularArcRoiDots) MainCanvas.Children.Remove(dot);
+            if (circularArcRoiLabelBorder != null) MainCanvas.Children.Remove(circularArcRoiLabelBorder);
+            if (circularArcRoiPreviewLine != null) MainCanvas.Children.Remove(circularArcRoiPreviewLine);
+            circularArcRoi = null;
+            circularArcRoiDots = new Ellipse[3];
+            circularArcRoiLabelBorder = null;
+            circularArcRoiPreviewLine = null;
+            circularArcRoiClickCount = 0;
+        }
+
+        private bool IsCircularArcRoiHitTest(Point pos)
+        {
+            if (circularArcRoiClickCount < 3)
+            {
+                return true; // 可以新增點
+            }
+
+            // 檢查是否點擊到控制點
+            for (int i = 0; i < 3; i++)
+            {
+                if ((pos - circularArcRoiPoints[i]).Length < 12) return true;
+            }
+
+            // 檢查是否點擊到圓弧線條（簡化檢測）
+            if (circularArcRoi != null)
+            {
+                // 這裡可以加入更精確的圓弧線條檢測
+                // 目前簡化為檢測控制點附近的區域
+                for (int i = 0; i < 3; i++)
+                {
+                    if ((pos - circularArcRoiPoints[i]).Length < 20) return true;
+                }
+            }
+
+            return false;
+        }
+
+        private void HandleCircularArcRoiMouseDown(Point pos)
+        {
+            if (circularArcRoiClickCount < 3)
+            {
+                // 三點成弧：第一個點是起點，第二個點是中點，第三個點是終點
+                circularArcRoiPoints[circularArcRoiClickCount] = pos;
+                circularArcRoiClickCount++;
+                DrawCircularArcRoi();
+            }
+            else
+            {
+                // 檢查是否點擊到控制點進行拖曳
+                for (int i = 0; i < 3; i++)
+                {
+                    if ((pos - circularArcRoiPoints[i]).Length < 12)
+                    {
+                        isDraggingCircularArcDot = true;
+                        draggingCircularArcDotIndex = i;
+                        break;
+                    }
+                }
+            }
+        }
+
+        private void HandleCircularArcRoiMouseMove(Point pos)
+        {
+            if (isDraggingCircularArcDot && draggingCircularArcDotIndex >= 0 && draggingCircularArcDotIndex < 3)
+            {
+                // 拖曳控制點
+                circularArcRoiPoints[draggingCircularArcDotIndex] = pos;
+                DrawCircularArcRoi();
+            }
+            else if (circularArcRoiClickCount < 3)
+            {
+                // 預覽模式：顯示即將新增的點
+                if (circularArcRoiPreviewLine != null) MainCanvas.Children.Remove(circularArcRoiPreviewLine);
+                
+                if (circularArcRoiClickCount > 0)
+                {
+                    circularArcRoiPreviewLine = new Line
+                    {
+                        X1 = circularArcRoiPoints[circularArcRoiClickCount - 1].X,
+                        Y1 = circularArcRoiPoints[circularArcRoiClickCount - 1].Y,
+                        X2 = pos.X,
+                        Y2 = pos.Y,
+                        Stroke = new SolidColorBrush(styleDict["circulararc"].line),
+                        StrokeThickness = 2,
+                        StrokeDashArray = new DoubleCollection { 5, 5 },
+                        Opacity = 0.6,
+                        IsHitTestVisible = false
+                    };
+                    MainCanvas.Children.Add(circularArcRoiPreviewLine);
+                }
+            }
+        }
+
+        private void HandleCircularArcRoiMouseUp(Point pos)
+        {
+            if (isDraggingCircularArcDot)
+            {
+                isDraggingCircularArcDot = false;
+                draggingCircularArcDotIndex = -1;
+            }
+        }
+
+        private void DrawCircularArcRoi()
+        {
+            if (circularArcRoi != null) MainCanvas.Children.Remove(circularArcRoi);
+            foreach (var dot in circularArcRoiDots) MainCanvas.Children.Remove(dot);
+            if (circularArcRoiLabelBorder != null) MainCanvas.Children.Remove(circularArcRoiLabelBorder);
+            circularArcRoi = null;
+            circularArcRoiDots = new Ellipse[3];
+            circularArcRoiLabelBorder = null;
+
+            if (circularArcRoiClickCount < 1) return;
+
+            // 只點一個點時，顯示該點
+            if (circularArcRoiClickCount == 1)
+            {
+                var dot = new Ellipse
+                {
+                    Width = 18,
+                    Height = 18,
+                    Fill = Brushes.White,
+                    Stroke = new SolidColorBrush(styleDict["circulararc"].line),
+                    StrokeThickness = 3,
+                    Opacity = 0.98,
+                    Effect = new DropShadowEffect { Color = styleDict["circulararc"].glow, BlurRadius = 8, ShadowDepth = 0, Opacity = 0.7 },
+                    RenderTransform = circularArcRoiDotScales[0],
+                    RenderTransformOrigin = new Point(0.5, 0.5),
+                    IsHitTestVisible = false
+                };
+                Canvas.SetLeft(dot, circularArcRoiPoints[0].X - 9);
+                Canvas.SetTop(dot, circularArcRoiPoints[0].Y - 9);
+                MainCanvas.Children.Add(dot);
+                circularArcRoiDots[0] = dot;
+                return;
+            }
+
+            // 建立圓弧路徑
+            PathFigure pathFigure = new PathFigure();
+            pathFigure.StartPoint = circularArcRoiPoints[0]; // 起點
+
+            if (circularArcRoiClickCount == 2)
+            {
+                // 只有兩個點時，畫直線
+                LineSegment lineSegment = new LineSegment(circularArcRoiPoints[1], true);
+                pathFigure.Segments.Add(lineSegment);
+            }
+            else if (circularArcRoiClickCount == 3)
+            {
+                // 有三個點時，計算圓弧參數（三點成弧）
+                CalculateCircularArcFromThreePoints();
+                
+                // 建立圓弧段
+                ArcSegment arcSegment = new ArcSegment
+                {
+                    Point = circularArcRoiPoints[1], // 終點
+                    Size = new Size(circularArcRoiRadius, circularArcRoiRadius),
+                    IsLargeArc = circularArcRoiIsLargeArc,
+                    SweepDirection = circularArcRoiSweepFlag ? SweepDirection.Clockwise : SweepDirection.Counterclockwise
+                };
+                pathFigure.Segments.Add(arcSegment);
+            }
+
+            PathGeometry pathGeometry = new PathGeometry();
+            pathGeometry.Figures.Add(pathFigure);
+
+            circularArcRoi = new Path
+            {
+                Data = pathGeometry,
+                Stroke = new SolidColorBrush(styleDict["circulararc"].line),
+                StrokeThickness = 3,
+                Fill = new SolidColorBrush(Color.FromArgb(60, 255, 64, 129)), // 粉紅色半透明
+                IsHitTestVisible = false,
+                Effect = new DropShadowEffect { Color = styleDict["circulararc"].glow, BlurRadius = 10, ShadowDepth = 0, Opacity = 0.7 }
+            };
+            MainCanvas.Children.Add(circularArcRoi);
+
+            // 畫控制點
+            for (int i = 0; i < circularArcRoiClickCount; i++)
+            {
+                var dot = new Ellipse
+                {
+                    Width = 18,
+                    Height = 18,
+                    Fill = (i == 2) ? new SolidColorBrush(Color.FromRgb(255, 235, 59)) : Brushes.White, // 中點黃色，其餘白色
+                    Stroke = (i == 2) ? new SolidColorBrush(Color.FromRgb(255, 87, 34)) : new SolidColorBrush(styleDict["circulararc"].line), // 中點亮橘色，其餘粉紅色
+                    StrokeThickness = 3,
+                    Opacity = 0.98,
+                    Effect = (i == 2) ? new DropShadowEffect { Color = Color.FromRgb(255, 60, 0), BlurRadius = 18, ShadowDepth = 0, Opacity = 0.8 } : new DropShadowEffect { Color = styleDict["circulararc"].glow, BlurRadius = 8, ShadowDepth = 0, Opacity = 0.7 },
+                    RenderTransform = circularArcRoiDotScales[i],
+                    RenderTransformOrigin = new Point(0.5, 0.5),
+                    IsHitTestVisible = false
+                };
+                Canvas.SetLeft(dot, circularArcRoiPoints[i].X - 9);
+                Canvas.SetTop(dot, circularArcRoiPoints[i].Y - 9);
+                MainCanvas.Children.Add(dot);
+                circularArcRoiDots[i] = dot;
+            }
+
+            if (showLabels && circularArcRoiClickCount == 3)
+            {
+                double arcLength = CalculateCircularArcLength();
+                string start = $"起點: ({circularArcRoiPoints[0].X:F0}, {circularArcRoiPoints[0].Y:F0})";
+                string end = $"終點: ({circularArcRoiPoints[1].X:F0}, {circularArcRoiPoints[1].Y:F0})";
+                string middle = $"中點: ({circularArcRoiPoints[2].X:F0}, {circularArcRoiPoints[2].Y:F0})";
+                string radius = $"半徑: {circularArcRoiRadius:F1}";
+                string angle = $"角度: {Math.Abs(circularArcRoiEndAngle - circularArcRoiStartAngle):F1}°";
+                string arcLen = $"弧長: {arcLength:F1}";
+                
+                var labelText = new TextBlock
+                {
+                    Text = $"{start}\n{end}\n{middle}\n{radius}\n{angle}\n{arcLen}",
+                    Foreground = new SolidColorBrush(styleDict["circulararc"].labelFg),
+                    FontWeight = FontWeights.Bold,
+                    FontSize = 14,
+                    FontFamily = new FontFamily("Segoe UI"),
+                    Background = Brushes.Transparent,
+                    Opacity = 1.0,
+                    Padding = new Thickness(0),
+                    TextAlignment = TextAlignment.Center
+                };
+                var labelBorder = new Border
+                {
+                    Background = new SolidColorBrush(styleDict["circulararc"].labelBg),
+                    CornerRadius = new CornerRadius(8),
+                    Child = labelText,
+                    Effect = new DropShadowEffect { Color = Colors.Gray, BlurRadius = 6, ShadowDepth = 2, Opacity = 0.5 },
+                    Opacity = 0.98,
+                    Padding = new Thickness(6, 2, 6, 2)
+                };
+                
+                // 計算標籤位置（在圓弧中點附近）
+                Point midPoint = GetCircularArcMidPoint();
+                var (offsetX, offsetY) = GetLabelOffset(midPoint, MainCanvas.ActualWidth, MainCanvas.ActualHeight);
+                Canvas.SetLeft(labelBorder, midPoint.X + offsetX);
+                Canvas.SetTop(labelBorder, midPoint.Y + offsetY);
+                MainCanvas.Children.Add(labelBorder);
+                circularArcRoiLabelBorder = labelBorder;
+            }
+        }
+
+        private void CalculateCircularArcFromThreePoints()
+        {
+            // 三點成弧：circularArcRoiPoints[0] = 起點, [1] = 終點, [2] = 中點
+            Point startPoint = circularArcRoiPoints[0];
+            Point endPoint = circularArcRoiPoints[1];
+            Point middlePoint = circularArcRoiPoints[2];
+
+            // 正確順序：起點、終點、中點
+            Point centerPoint = CalculateCircumcenter(startPoint, endPoint, middlePoint);
+            
+            // 計算半徑
+            circularArcRoiRadius = Math.Sqrt(Math.Pow(startPoint.X - centerPoint.X, 2) + Math.Pow(startPoint.Y - centerPoint.Y, 2));
+
+            // 計算三點相對於圓心的角度
+            double startAngle = Math.Atan2(startPoint.Y - centerPoint.Y, startPoint.X - centerPoint.X) * 180 / Math.PI;
+            double endAngle = Math.Atan2(endPoint.Y - centerPoint.Y, endPoint.X - centerPoint.X) * 180 / Math.PI;
+            double middleAngle = Math.Atan2(middlePoint.Y - centerPoint.Y, middlePoint.X - centerPoint.X) * 180 / Math.PI;
+            if (startAngle < 0) startAngle += 360;
+            if (endAngle < 0) endAngle += 360;
+            if (middleAngle < 0) middleAngle += 360;
+
+            circularArcRoiStartAngle = startAngle;
+            circularArcRoiEndAngle = endAngle;
+
+            // 判斷弧段是否經過中點
+            // 計算從start到end的順時針角度
+            double sweep = endAngle - startAngle;
+            if (sweep < 0) sweep += 360;
+            // 判斷middleAngle是否在startAngle和endAngle之間（順時針方向）
+            bool isMiddleInSweep = (startAngle < endAngle && middleAngle > startAngle && middleAngle < endAngle) ||
+                                   (startAngle > endAngle && (middleAngle > startAngle || middleAngle < endAngle));
+
+            if (isMiddleInSweep)
+            {
+                circularArcRoiSweepFlag = true; // 順時針
+                circularArcRoiIsLargeArc = sweep > 180;
+            }
+            else
+            {
+                circularArcRoiSweepFlag = false; // 逆時針
+                circularArcRoiIsLargeArc = (360 - sweep) > 180;
+            }
+        }
+
+        private Point CalculateCircumcenter(Point p1, Point p2, Point p3)
+        {
+            // 計算三點的外接圓圓心
+            double x1 = p1.X, y1 = p1.Y;
+            double x2 = p2.X, y2 = p2.Y;
+            double x3 = p3.X, y3 = p3.Y;
+
+            // 檢查三點是否共線
+            double area = x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2);
+            if (Math.Abs(area) < 1e-10)
+            {
+                // 三點共線，無法形成圓弧，返回中點
+                return new Point((x1 + x2 + x3) / 3, (y1 + y2 + y3) / 3);
+            }
+
+            // 計算外接圓圓心
+            double d = 2 * (x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2));
+            double ux = ((x1 * x1 + y1 * y1) * (y2 - y3) + (x2 * x2 + y2 * y2) * (y3 - y1) + (x3 * x3 + y3 * y3) * (y1 - y2)) / d;
+            double uy = ((x1 * x1 + y1 * y1) * (x3 - x2) + (x2 * x2 + y2 * y2) * (x1 - x3) + (x3 * x3 + y3 * y3) * (x2 - x1)) / d;
+
+            return new Point(ux, uy);
+        }
+
+        private double CalculateCircularArcLength()
+        {
+            if (circularArcRoiClickCount < 3) return 0;
+
+            // 計算角度差
+            double angleDiff = Math.Abs(circularArcRoiEndAngle - circularArcRoiStartAngle);
+            if (angleDiff > 180)
+            {
+                angleDiff = 360 - angleDiff;
+            }
+
+            // 弧長 = 半徑 × 角度（弧度）
+            return circularArcRoiRadius * angleDiff * Math.PI / 180;
+        }
+
+        private Point GetCircularArcMidPoint()
+        {
+            if (circularArcRoiClickCount < 3) return new Point(0, 0);
+
+            // 三點成弧：circularArcRoiPoints[0] = 起點, [1] = 中點, [2] = 終點
+            Point startPoint = circularArcRoiPoints[0];
+            Point middlePoint = circularArcRoiPoints[1];
+            Point endPoint = circularArcRoiPoints[2];
+
+            // 計算圓心
+            Point centerPoint = CalculateCircumcenter(startPoint, middlePoint, endPoint);
+
+            // 計算圓弧中點的角度
+            double midAngle = (circularArcRoiStartAngle + circularArcRoiEndAngle) / 2;
+            if (Math.Abs(circularArcRoiEndAngle - circularArcRoiStartAngle) > 180)
+            {
+                midAngle += 180;
+                if (midAngle >= 360) midAngle -= 360;
+            }
+
+            // 計算中點座標
+            double midAngleRad = midAngle * Math.PI / 180;
+            double midX = centerPoint.X + circularArcRoiRadius * Math.Cos(midAngleRad);
+            double midY = centerPoint.Y + circularArcRoiRadius * Math.Sin(midAngleRad);
+
+            return new Point(midX, midY);
+        }
+
+        #endregion
 
     }
 }
