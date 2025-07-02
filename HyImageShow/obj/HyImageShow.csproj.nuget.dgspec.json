@@ -1,0 +1,74 @@
+{
+  "format": 1,
+  "restore": {
+    "D:\\@Code\\新增資料夾\\3D-AOI-ImageShow-DYC - Decoupling\\HyImageShow\\HyImageShow.csproj": {}
+  },
+  "projects": {
+    "D:\\@Code\\新增資料夾\\3D-AOI-ImageShow-DYC - Decoupling\\HyImageShow\\HyImageShow.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "D:\\@Code\\新增資料夾\\3D-AOI-ImageShow-DYC - Decoupling\\HyImageShow\\HyImageShow.csproj",
+        "projectName": "HyImageShow",
+        "projectPath": "D:\\@Code\\新增資料夾\\3D-AOI-ImageShow-DYC - Decoupling\\HyImageShow\\HyImageShow.csproj",
+        "packagesPath": "C:\\Users\\dingyuan.chen\\.nuget\\packages\\",
+        "outputPath": "D:\\@Code\\新增資料夾\\3D-AOI-ImageShow-DYC - Decoupling\\HyImageShow\\obj\\",
+        "projectStyle": "PackageReference",
+        "skipContentFileWrite": true,
+        "UsingMicrosoftNETSdk": false,
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
+        "configFilePaths": [
+          "C:\\Users\\dingyuan.chen\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net48"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net48": {
+            "projectReferences": {}
+          }
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net48": {
+          "dependencies": {
+            "Microsoft.Extensions.DependencyInjection": {
+              "target": "Package",
+              "version": "[7.0.0, )"
+            },
+            "Microsoft.Extensions.DependencyInjection.Abstractions": {
+              "target": "Package",
+              "version": "[7.0.0, )"
+            }
+          }
+        }
+      },
+      "runtimes": {
+        "win": {
+          "#import": []
+        },
+        "win-arm64": {
+          "#import": []
+        },
+        "win-x64": {
+          "#import": []
+        },
+        "win-x86": {
+          "#import": []
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,70 @@
+<UserControl x:Class="HyImageShow.ImageShowWPF.View.Controls.ToolButton"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:controls="clr-namespace:HyImageShow.ImageShowWPF.View.Controls"
+             mc:Ignorable="d" 
+             d:DesignHeight="40" d:DesignWidth="80">
+    
+    <UserControl.Resources>
+        <!-- 統一的按鈕樣式 -->
+        <Style x:Key="UnifiedButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="#495057" />
+            <Setter Property="BorderBrush" Value="#dee2e6" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="Margin" Value="2" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              Margin="{TemplateBinding Padding}" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver"
+                         Value="True">
+                    <Setter Property="Background"
+                            Value="#f0f4f8" />
+                    <Setter Property="BorderBrush"
+                            Value="#a8c0d8" />
+                </Trigger>
+                <Trigger Property="IsPressed"
+                         Value="True">
+                    <Setter Property="Background"
+                            Value="#e0e8f0" />
+                    <Setter Property="BorderBrush"
+                            Value="#8ba8c8" />
+                </Trigger>
+                <!-- 工具按鈕的 IsActive 效果 -->
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding ButtonType}" Value="Tool" />
+                        <Condition Binding="{Binding IsActive}" Value="True" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Background" Value="#2196F3"/>
+                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="BorderBrush" Value="#1976D2"/>
+                </MultiDataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+    
+    <Button x:Name="MainButton"
+            DataContext="{Binding RelativeSource={RelativeSource AncestorType=UserControl}}"
+            Command="{Binding Command, RelativeSource={RelativeSource AncestorType=UserControl}}"
+            Content="{Binding Content, RelativeSource={RelativeSource AncestorType=UserControl}}"
+            Width="{Binding ButtonWidth, RelativeSource={RelativeSource AncestorType=UserControl}}"
+            Style="{StaticResource UnifiedButtonStyle}" />
+</UserControl> 

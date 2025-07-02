@@ -4,17 +4,17 @@
 winexe
 C#
 .cs
-D:\@Code\HyImageShow_new_AddFunc\HyImageShow\HyImageShow\obj\Debug\
+D:\@Code\新增資料夾\3D-AOI-ImageShow-DYC - AlwaysKeepUpdateVersion\HyImageShow\obj\Debug\
 HyImageShow
 none
 false
 DEBUG;TRACE
-D:\@Code\HyImageShow_new_AddFunc\HyImageShow\HyImageShow\App.xaml
-2-903826825
+D:\@Code\新增資料夾\3D-AOI-ImageShow-DYC - AlwaysKeepUpdateVersion\HyImageShow\App.xaml
+111980486648
 
-26-191643060
-18-1886437399
-GluePathWPF\View\GluePathEditorView.xaml;ImageShowWPF\View\MainImageShow.xaml;
+721376900351
+23825644457
+GluePathWPF\View\GluePathEditorView.xaml;ImageShowWPF\View\Controls\ToolButton.xaml;ImageShowWPF\View\RoiCards\BezierArcRoiCard.xaml;ImageShowWPF\View\RoiCards\CircularArcRoiCard.xaml;ImageShowWPF\View\RoiCards\EllipseRoiCard.xaml;ImageShowWPF\View\RoiCards\LineRoiCard.xaml;ImageShowWPF\View\RoiCards\PolygonRoiCard.xaml;ImageShowWPF\View\RoiCards\RotRectRoiCard.xaml;ImageShowWPF\View\RoiCards\RulerRoiCard.xaml;MainWindow.xaml;ImageShowWPF\View\MainImageShow.xaml;
 
 False
 

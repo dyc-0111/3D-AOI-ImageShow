@@ -71,6 +71,42 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="ImageShowWPF\View\Controls\ToolButton.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="ImageShowWPF\View\RoiCards\BezierArcRoiCard.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="ImageShowWPF\View\RoiCards\CircularArcRoiCard.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="ImageShowWPF\View\RoiCards\EllipseRoiCard.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="ImageShowWPF\View\RoiCards\LineRoiCard.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="ImageShowWPF\View\RoiCards\PolygonRoiCard.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="ImageShowWPF\View\RoiCards\RotRectRoiCard.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="ImageShowWPF\View\RoiCards\RulerRoiCard.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="MainWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
@@ -97,13 +133,78 @@
     <Compile Include="GluePathWPF\View\GluePathEditorView.xaml.cs">
       <DependentUpon>GluePathEditorView.xaml</DependentUpon>
     </Compile>
+    <Compile Include="ImageShowWPF\Data\RoiData.cs" />
+    <Compile Include="ImageShowWPF\Data\RoiDataConverter.cs" />
+    <Compile Include="ImageShowWPF\Models\BaseItem.cs" />
+    <Compile Include="ImageShowWPF\Models\CrossLineItem.cs" />
+    <Compile Include="ImageShowWPF\Models\ZIndexManager.cs" />
+    <Compile Include="ImageShowWPF\Services\BaseRoiDrawingService.cs" />
+    <Compile Include="ImageShowWPF\Services\BaseRoiService.cs" />
+    <Compile Include="ImageShowWPF\Services\CrossLinesDrawingService.cs" />
+    <Compile Include="ImageShowWPF\Services\CrossLinesService.cs" />
+    <Compile Include="ImageShowWPF\Services\DrawLineDrawingService.cs" />
+    <Compile Include="ImageShowWPF\View\BoolToBackgroundConverter.cs" />
+    <Compile Include="ImageShowWPF\View\Controls\ToolButton.xaml.cs">
+      <DependentUpon>ToolButton.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="ImageShowWPF\View\RoiCards\BezierArcRoiCard.xaml.cs">
+      <DependentUpon>BezierArcRoiCard.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="ImageShowWPF\View\RoiCards\CircularArcRoiCard.xaml.cs">
+      <DependentUpon>CircularArcRoiCard.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="ImageShowWPF\View\RoiCards\EllipseRoiCard.xaml.cs">
+      <DependentUpon>EllipseRoiCard.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="ImageShowWPF\View\RoiCards\LineRoiCard.xaml.cs">
+      <DependentUpon>LineRoiCard.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="ImageShowWPF\View\RoiCards\PolygonRoiCard.xaml.cs">
+      <DependentUpon>PolygonRoiCard.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="ImageShowWPF\View\RoiCards\RotRectRoiCard.xaml.cs">
+      <DependentUpon>RotRectRoiCard.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="ImageShowWPF\View\RoiCards\RulerRoiCard.xaml.cs">
+      <DependentUpon>RulerRoiCard.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="ImageShowWPF\View\RoiCards\RoiCardTemplateSelector.cs" />
+    <Compile Include="MainWindow.xaml.cs">
+      <DependentUpon>MainWindow.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
     <Page Include="ImageShowWPF\View\MainImageShow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ImageShowWPF\ViewModel\ImageShowViewModel.cs" />
+    <Compile Include="ImageShowWPF\Commands\RelayCommand.cs" />
+    <Compile Include="ImageShowWPF\Models\BezierArcRoiItem.cs" />
+    <Compile Include="ImageShowWPF\Models\CircularArcRoiItem.cs" />
+    <Compile Include="ImageShowWPF\Models\DrawLineItem.cs" />
+    <Compile Include="ImageShowWPF\Models\EllipseRoiItem.cs" />
+    <Compile Include="ImageShowWPF\Models\PolygonRoiItem.cs" />
+    <Compile Include="ImageShowWPF\Models\RectRoiItem.cs" />
+    <Compile Include="ImageShowWPF\Models\RoiItem.cs" />
+    <Compile Include="ImageShowWPF\Models\RulerItem.cs" />
+    <Compile Include="ImageShowWPF\Services\BezierArcRoiDrawingService.cs" />
+    <Compile Include="ImageShowWPF\Services\BezierArcRoiService.cs" />
+    <Compile Include="ImageShowWPF\Services\CircularArcRoiDrawingService.cs" />
+    <Compile Include="ImageShowWPF\Services\CircularArcRoiService.cs" />
+    <Compile Include="ImageShowWPF\Services\DrawLineService.cs" />
+    <Compile Include="ImageShowWPF\Services\EllipseRoiDrawingService.cs" />
+    <Compile Include="ImageShowWPF\Services\EllipseRoiService.cs" />
+    <Compile Include="ImageShowWPF\Services\IRoiManagementService.cs" />
+    <Compile Include="ImageShowWPF\Services\PolygonRoiDrawingService.cs" />
+    <Compile Include="ImageShowWPF\Services\PolygonRoiService.cs" />
+    <Compile Include="ImageShowWPF\Services\RoiManagementService.cs" />
+    <Compile Include="ImageShowWPF\Services\RotRectRoiDrawingService.cs" />
+    <Compile Include="ImageShowWPF\Services\RotRectRoiService.cs" />
+    <Compile Include="ImageShowWPF\Services\RulerDrawingService.cs" />
+    <Compile Include="ImageShowWPF\Services\RulerService.cs" />
+    <Compile Include="ImageShowWPF\ViewModels\ImageShowViewModel.cs" />
+    <Compile Include="ImageShowWPF\ViewModels\MainWindowViewModel.cs" />
     <Compile Include="ImageShowWPF\View\MainImageShow.xaml.cs">
       <DependentUpon>MainImageShow.xaml</DependentUpon>
     </Compile>
@@ -132,5 +233,6 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

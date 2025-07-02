@@ -1,0 +1,42 @@
+<UserControl x:Class="HyImageShow.ImageShowWPF.View.RoiCards.PolygonRoiCard"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="100"
+             d:DesignWidth="240">
+    <Border CornerRadius="8"
+            BorderBrush="#e3e3e3"
+            BorderThickness="1"
+            Padding="0"
+            Background="White">
+        <DockPanel>
+            <Border Width="4"
+                    Background="#8e24aa"
+                    DockPanel.Dock="Left"
+                    CornerRadius="8,0,0,8" />
+            <StackPanel Margin="12,8,8,8">
+                <StackPanel Orientation="Horizontal"
+                            VerticalAlignment="Center">
+                    <TextBlock Text="🔷"
+                               FontSize="16"
+                               Margin="0,0,6,0" />
+                    <TextBlock Text="Polygon"
+                               FontWeight="Bold"
+                               FontSize="14" />
+                </StackPanel>
+                <TextBlock Foreground="#666"
+                           FontSize="11"
+                           Margin="0,6,0,0">
+                        <Run Text="{Binding Point3Text, Mode=OneWay}" />
+                </TextBlock>
+                <TextBlock Foreground="#666"
+                           FontSize="11"
+                           Margin="0,6,0,0">
+                        <Run Text="{Binding AngleText, Mode=OneWay}" />
+                </TextBlock>
+            </StackPanel>
+        </DockPanel>
+    </Border>
+</UserControl> 

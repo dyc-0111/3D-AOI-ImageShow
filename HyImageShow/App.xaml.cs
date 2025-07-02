@@ -1,13 +1,6 @@
-﻿using HyImageShow.ImageShow;
-using Hyperbrid.UIX.Tools.Extension;
-using Hyperbrid.UIX.WinForms;
-using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Data;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Windows;
+﻿using System.Windows;
+using HyImageShow.ImageShowWPF.Services;
+using HyImageShow.ImageShowWPF.ViewModels;
 
 namespace HyImageShow
 {
@@ -20,19 +13,79 @@ namespace HyImageShow
         {
             base.OnStartup(e);
 
-            var mainWindow = new Window
-            {
-                Title = "Main",
-                Width = 800,
-                Height = 600,
-                WindowStartupLocation = WindowStartupLocation.CenterScreen,
-            };
-
-            var view = new MainImageShow();
-            view.DataContext = new ImageShowViewModel();
-
-            mainWindow.Content = view;
+            // 簡單的服務定位器模式
+            var services = CreateServices();
+            var imageShowViewModel = CreateImageShowViewModel(services);
+            var mainWindowViewModel = new MainWindowViewModel(imageShowViewModel);
+            var mainWindow = new MainWindow(mainWindowViewModel);
+            
             mainWindow.Show();
+        }
+
+        private static object[] CreateServices()
+        {
+            // 創建所有服務實例
+            var roiManagementService = new RoiManagementService();
+            var lineService = new DrawLineService();
+            var lineDrawingService = new DrawLineDrawingService();
+            var rulerDrawingService = new RulerDrawingService();
+            var rulerService = new RulerService();
+            var rotRectRoiService = new RotRectRoiService();
+            var rotRectRoiDrawingService = new RotRectRoiDrawingService();
+            var ellipseRoiService = new EllipseRoiService();
+            var ellipseRoiDrawingService = new EllipseRoiDrawingService();
+            var polygonRoiService = new PolygonRoiService();
+            var polygonRoiDrawingService = new PolygonRoiDrawingService();
+            var bezierArcRoiService = new BezierArcRoiService();
+            var bezierArcRoiDrawingService = new BezierArcRoiDrawingService();
+            var circularArcRoiService = new CircularArcRoiService();
+            var circularArcRoiDrawingService = new CircularArcRoiDrawingService();
+            var crossLinesService = new CrossLinesService();
+            var crossLinesDrawingService = new CrossLinesDrawingService();
+
+            return new object[]
+            {
+                roiManagementService,
+                lineService,
+                lineDrawingService,
+                rulerService,
+                rulerDrawingService,
+                rotRectRoiService,
+                rotRectRoiDrawingService,
+                ellipseRoiService,
+                ellipseRoiDrawingService,
+                polygonRoiService,
+                polygonRoiDrawingService,
+                bezierArcRoiService,
+                bezierArcRoiDrawingService,
+                circularArcRoiService,
+                circularArcRoiDrawingService,
+                crossLinesService,
+                crossLinesDrawingService
+            };
+        }
+
+        private static ImageShowViewModel CreateImageShowViewModel(object[] services)
+        {
+            return new ImageShowViewModel(
+                (RoiManagementService)services[0],
+                (DrawLineService)services[1],
+                (RulerService)services[3],
+                (RotRectRoiService)services[5],
+                (EllipseRoiService)services[7],
+                (PolygonRoiService)services[9],
+                (BezierArcRoiService)services[11],
+                (CircularArcRoiService)services[13],
+                (CrossLinesService)services[15],
+                (RulerDrawingService)services[4],
+                (RotRectRoiDrawingService)services[6],
+                (EllipseRoiDrawingService)services[8],
+                (PolygonRoiDrawingService)services[10],
+                (BezierArcRoiDrawingService)services[12],
+                (CircularArcRoiDrawingService)services[14],
+                (CrossLinesDrawingService)services[16],
+                (DrawLineDrawingService)services[2]
+            );
         }
     }
 }

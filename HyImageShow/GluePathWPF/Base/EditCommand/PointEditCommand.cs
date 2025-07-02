@@ -52,11 +52,6 @@ namespace HyImageShow
             oldLinePoints.Add(oldPoint);
             newLinePoints.Add(newPoint);
 
-            Console.WriteLine($"PointEditCommand: " +
-                $"({oldPoint.StartX},{oldPoint.StartY}) -> ({newPoint.StartX},{newPoint.StartY})");
-            Console.WriteLine($"PointEditCommand: " +
-                $"({oldPoint.EndX},{oldPoint.EndY}) -> ({newPoint.EndX},{newPoint.EndY})");
-
             UpdateLine = updateLine;
         }
 
