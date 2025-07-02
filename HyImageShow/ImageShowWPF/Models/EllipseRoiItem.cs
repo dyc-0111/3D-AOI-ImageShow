@@ -195,7 +195,7 @@ namespace HyImageShow.ImageShowWPF.Models
         public override string SimpleDisplayText => $"{FormatPointText(CenterPoint)} R:{FormatValueText(Radius)}";
 
         // BaseItem 抽象成員實作
-        public override string ItemType => "橢圓";
+        public override string ItemType => "Ellipse";
 
         public override Point Center => center;
 

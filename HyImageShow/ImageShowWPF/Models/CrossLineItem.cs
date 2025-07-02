@@ -65,7 +65,7 @@ namespace HyImageShow.ImageShowWPF.Models
         /// </summary>
         public Line VerticalLine { get; set; }
 
-        public override string ItemType => "十字線";
+        public override string ItemType => "CrossLine";
         public override string DisplayText => $"中心: {FormatPointText(Center)} 長度: {FormatValueText(Length)} 角度: {FormatValueText(Angle)}°";
         public override string SimpleDisplayText => $"{FormatPointText(Center)} L:{FormatValueText(Length)} {FormatValueText(Angle)}°";
         public override void ClearUIElements()

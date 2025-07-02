@@ -67,10 +67,6 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Page Include="GluePathWPF\View\GluePathEditorView.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
     <Page Include="ImageShowWPF\View\Controls\ToolButton.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -88,6 +84,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="ImageShowWPF\View\RoiCards\LineRoiCard.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="ImageShowWPF\View\RoiCards\PointRoiCard.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
@@ -111,38 +111,19 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="GluePathWPF\Base\DrawPath.cs" />
-    <Compile Include="GluePathWPF\Base\DXFConverter.cs" />
-    <Compile Include="GluePathWPF\Base\EditCommandHistory.cs" />
-    <Compile Include="GluePathWPF\Base\EditCommand\AddLayerEditCommand.cs" />
-    <Compile Include="GluePathWPF\Base\EditCommand\AddLineEditCommand.cs" />
-    <Compile Include="GluePathWPF\Base\EditCommand\IEditCommand.cs" />
-    <Compile Include="GluePathWPF\Base\EditCommand\PointEditCommand.cs" />
-    <Compile Include="GluePathWPF\Base\EditCommand\RemoveLayerEditCommand.cs" />
-    <Compile Include="GluePathWPF\Base\EditCommand\RemoveLineEditCommand.cs" />
-    <Compile Include="GluePathWPF\Base\GluePathEditorElementHost.cs" />
-    <Compile Include="GluePathWPF\Base\Line\ELinePointType.cs" />
-    <Compile Include="GluePathWPF\Base\Line\LineLayer.cs" />
-    <Compile Include="GluePathWPF\Base\Line\LinePoint.cs" />
-    <Compile Include="GluePathWPF\Base\Line\PointConfiguration.cs" />
-    <Compile Include="GluePathWPF\Base\Line\Service\DrawingService.cs" />
-    <Compile Include="GluePathWPF\Base\Line\Service\LineAnimation\ILineAnimationService.cs" />
-    <Compile Include="GluePathWPF\Base\Line\Service\LineAnimation\LineAnimationService.cs" />
-    <Compile Include="GluePathWPF\Base\Line\Service\LineLayerService.cs" />
-    <Compile Include="GluePathWPF\ViewModel\GluePathEditorViewModel.cs" />
-    <Compile Include="GluePathWPF\View\GluePathEditorView.xaml.cs">
-      <DependentUpon>GluePathEditorView.xaml</DependentUpon>
-    </Compile>
     <Compile Include="ImageShowWPF\Data\RoiData.cs" />
     <Compile Include="ImageShowWPF\Data\RoiDataConverter.cs" />
     <Compile Include="ImageShowWPF\Models\BaseItem.cs" />
     <Compile Include="ImageShowWPF\Models\CrossLineItem.cs" />
+    <Compile Include="ImageShowWPF\Models\PointItem.cs" />
     <Compile Include="ImageShowWPF\Models\ZIndexManager.cs" />
     <Compile Include="ImageShowWPF\Services\BaseRoiDrawingService.cs" />
     <Compile Include="ImageShowWPF\Services\BaseRoiService.cs" />
     <Compile Include="ImageShowWPF\Services\CrossLinesDrawingService.cs" />
     <Compile Include="ImageShowWPF\Services\CrossLinesService.cs" />
     <Compile Include="ImageShowWPF\Services\DrawLineDrawingService.cs" />
+    <Compile Include="ImageShowWPF\Services\PointRoiDrawingService.cs" />
+    <Compile Include="ImageShowWPF\Services\PointRoiService.cs" />
     <Compile Include="ImageShowWPF\View\BoolToBackgroundConverter.cs" />
     <Compile Include="ImageShowWPF\View\Controls\ToolButton.xaml.cs">
       <DependentUpon>ToolButton.xaml</DependentUpon>
@@ -158,6 +139,9 @@
     </Compile>
     <Compile Include="ImageShowWPF\View\RoiCards\LineRoiCard.xaml.cs">
       <DependentUpon>LineRoiCard.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="ImageShowWPF\View\RoiCards\PointRoiCard.xaml.cs">
+      <DependentUpon>PointRoiCard.xaml</DependentUpon>
     </Compile>
     <Compile Include="ImageShowWPF\View\RoiCards\PolygonRoiCard.xaml.cs">
       <DependentUpon>PolygonRoiCard.xaml</DependentUpon>

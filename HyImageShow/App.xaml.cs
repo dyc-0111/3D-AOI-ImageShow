@@ -42,6 +42,8 @@ namespace HyImageShow
             var circularArcRoiDrawingService = new CircularArcRoiDrawingService();
             var crossLinesService = new CrossLinesService();
             var crossLinesDrawingService = new CrossLinesDrawingService();
+            var pointRoiService = new PointRoiService();
+            var pointRoiDrawingService = new PointRoiDrawingService();
 
             return new object[]
             {
@@ -61,7 +63,9 @@ namespace HyImageShow
                 circularArcRoiService,
                 circularArcRoiDrawingService,
                 crossLinesService,
-                crossLinesDrawingService
+                crossLinesDrawingService,
+                pointRoiService,
+                pointRoiDrawingService
             };
         }
 
@@ -84,7 +88,9 @@ namespace HyImageShow
                 (BezierArcRoiDrawingService)services[12],
                 (CircularArcRoiDrawingService)services[14],
                 (CrossLinesDrawingService)services[16],
-                (DrawLineDrawingService)services[2]
+                (DrawLineDrawingService)services[2],
+                (PointRoiService)services[17],
+                (PointRoiDrawingService)services[18]
             );
         }
     }

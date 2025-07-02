@@ -71,6 +71,7 @@ namespace HyImageShow.ImageShowWPF.Models
                 if (OriginalObject is RectRoiItem rect) return rect.Point1Text;
                 if (OriginalObject is BezierArcRoiItem bezier) return bezier.Point1Text;
                 if (OriginalObject is CircularArcRoiItem circular) return circular.Point1Text;
+                if (OriginalObject is PointItem point) return point.Point1Text;
                 return base.Point1Text;
             }
         }
@@ -86,6 +87,7 @@ namespace HyImageShow.ImageShowWPF.Models
                 if (OriginalObject is RectRoiItem rect) return rect.Point2Text;
                 if (OriginalObject is BezierArcRoiItem bezier) return bezier.Point2Text;
                 if (OriginalObject is CircularArcRoiItem circular) return circular.Point2Text;
+                if (OriginalObject is PointItem point) return point.Point2Text;
                 return base.Point2Text;
             }
         }
@@ -97,6 +99,7 @@ namespace HyImageShow.ImageShowWPF.Models
                 if (OriginalObject is PolygonRoiItem poly) return poly.Point3Text;
                 if (OriginalObject is BezierArcRoiItem bezier) return bezier.Point3Text;
                 if (OriginalObject is CircularArcRoiItem circular) return circular.Point3Text;
+                if (OriginalObject is PointItem point) return point.Point3Text;
                 return base.Point3Text;
             }
         }
@@ -111,6 +114,7 @@ namespace HyImageShow.ImageShowWPF.Models
                 if (OriginalObject is RectRoiItem rect) return rect.SizeText;
                 if (OriginalObject is BezierArcRoiItem bezier) return bezier.SizeText;
                 if (OriginalObject is CircularArcRoiItem circular) return circular.SizeText;
+                if (OriginalObject is PointItem point) return point.SizeText;
                 return base.SizeText;
             }
         }
@@ -122,6 +126,7 @@ namespace HyImageShow.ImageShowWPF.Models
                 if (OriginalObject is RectRoiItem rect) return $"角度: {rect.RotationAngle:F1}°";
                 if (OriginalObject is PolygonRoiItem poly) return $"角度: {poly.RotationAngle:F1}°";
                 if (OriginalObject is CircularArcRoiItem circularArc) return $"角度: {circularArc.StartAngle:F1}° - {circularArc.EndAngle:F1}°";
+                if (OriginalObject is PointItem point) return point.AngleText;
                 return base.AngleText;
             }
         }
@@ -135,6 +140,7 @@ namespace HyImageShow.ImageShowWPF.Models
                 if (OriginalObject is RectRoiItem rect) return rect.CenterText;
                 if (OriginalObject is BezierArcRoiItem bezier) return bezier.CenterText;
                 if (OriginalObject is CircularArcRoiItem circular) return circular.CenterText;
+                if (OriginalObject is PointItem point) return point.CenterText;
                 return base.CenterText;
             }
         }
@@ -177,8 +183,36 @@ namespace HyImageShow.ImageShowWPF.Models
         public override Point Center => new Point(0, 0);
         public override Size Size => new Size(0, 0);
         public override double Angle => 0;
-        public override string DisplayText => "ROI Item";
-        public override string SimpleDisplayText => "ROI";
+        public override string DisplayText
+        {
+            get
+            {
+                if (OriginalObject is LineItem line) return line.DisplayText;
+                if (OriginalObject is RulerItem ruler) return ruler.DisplayText;
+                if (OriginalObject is EllipseRoiItem ellipse) return ellipse.DisplayText;
+                if (OriginalObject is PolygonRoiItem poly) return poly.DisplayText;
+                if (OriginalObject is RectRoiItem rect) return rect.DisplayText;
+                if (OriginalObject is BezierArcRoiItem bezier) return bezier.DisplayText;
+                if (OriginalObject is CircularArcRoiItem circular) return circular.DisplayText;
+                if (OriginalObject is PointItem point) return point.DisplayText;
+                return "ROI Item";
+            }
+        }
+        public override string SimpleDisplayText
+        {
+            get
+            {
+                if (OriginalObject is LineItem line) return line.SimpleDisplayText;
+                if (OriginalObject is RulerItem ruler) return ruler.SimpleDisplayText;
+                if (OriginalObject is EllipseRoiItem ellipse) return ellipse.SimpleDisplayText;
+                if (OriginalObject is PolygonRoiItem poly) return poly.SimpleDisplayText;
+                if (OriginalObject is RectRoiItem rect) return rect.SimpleDisplayText;
+                if (OriginalObject is BezierArcRoiItem bezier) return bezier.SimpleDisplayText;
+                if (OriginalObject is CircularArcRoiItem circular) return circular.SimpleDisplayText;
+                if (OriginalObject is PointItem point) return point.SimpleDisplayText;
+                return "ROI";
+            }
+        }
 
         #region 事件訂閱管理
 
@@ -316,6 +350,23 @@ namespace HyImageShow.ImageShowWPF.Models
                         OnPropertyChanged(nameof(Point2Text));
                         OnPropertyChanged(nameof(Point3Text));
                         OnPropertyChanged(nameof(SizeText));
+                        break;
+                }
+            }
+            else if (sender is PointItem point)
+            {
+                switch (e.PropertyName)
+                {
+                    case nameof(PointItem.Position):
+                    case nameof(PointItem.DisplayText):
+                    case nameof(PointItem.SimpleDisplayText):
+                        OnPropertyChanged(nameof(Point1Text));
+                        OnPropertyChanged(nameof(Point2Text));
+                        OnPropertyChanged(nameof(Point3Text));
+                        OnPropertyChanged(nameof(SizeText));
+                        OnPropertyChanged(nameof(CenterText));
+                        OnPropertyChanged(nameof(DisplayText));
+                        OnPropertyChanged(nameof(SimpleDisplayText));
                         break;
                 }
             }

@@ -262,7 +262,7 @@ namespace HyImageShow.ImageShowWPF.Models
 
 
         // BaseItem 抽象成員實作
-        public override string ItemType => "旋轉矩形";
+        public override string ItemType => "RotRect";
 
         public override Point Center => center;
 

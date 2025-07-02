@@ -165,5 +165,23 @@ namespace HyImageShow.ImageShowWPF.Data
             }
             return line;
         }
+
+        // PointItem <-> RoiData
+        public static RoiData FromPointItem(PointItem item)
+        {
+            return new RoiData
+            {
+                Type = RoiType.Point,
+                Points = new List<Point> { item.Position }
+            };
+        }
+        public static PointItem ToPointItem(RoiData data)
+        {
+            if (data.Points != null && data.Points.Count >= 1)
+            {
+                return new PointItem(data.Points[0]);
+            }
+            return null;
+        }
     }
 } 

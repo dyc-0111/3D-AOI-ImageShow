@@ -303,7 +303,7 @@ namespace HyImageShow.ImageShowWPF.Models
         public string RadiusText => $"半徑: {FormatValueText(Radius)}";
 
         // BaseItem 抽象成員實作
-        public override string ItemType => "圓弧";
+        public override string ItemType => "CircularArc";
         public override Point Center => CenterPoint;
         public override Size Size => new Size(2 * Radius, 2 * Radius);
         public override double Angle => StartAngle;

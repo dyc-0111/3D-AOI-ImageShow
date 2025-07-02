@@ -39,6 +39,8 @@ namespace HyImageShow.ImageShowWPF.ViewModels
         private readonly CircularArcRoiDrawingService _circularArcRoiDrawingService;
         private readonly CrossLinesDrawingService _crossLinesDrawingService;
         private readonly DrawLineDrawingService _drawLineDrawingService;
+        private readonly PointRoiService _pointRoiService;
+        private readonly PointRoiDrawingService _pointRoiDrawingService;
         private Canvas _mainCanvas;
 
         private ImageSource _imageSource;
@@ -67,7 +69,9 @@ namespace HyImageShow.ImageShowWPF.ViewModels
             BezierArcRoiDrawingService bezierArcRoiDrawingService,
             CircularArcRoiDrawingService circularArcRoiDrawingService,
             CrossLinesDrawingService crossLinesDrawingService,
-            DrawLineDrawingService drawLineDrawingService)
+            DrawLineDrawingService drawLineDrawingService,
+            PointRoiService pointRoiService,
+            PointRoiDrawingService pointRoiDrawingService)
         {
             _roiManagementService = roiManagementService ?? throw new ArgumentNullException(nameof(roiManagementService));
             _lineService = lineService ?? throw new ArgumentNullException(nameof(lineService));
@@ -86,6 +90,8 @@ namespace HyImageShow.ImageShowWPF.ViewModels
             _circularArcRoiDrawingService = circularArcRoiDrawingService ?? throw new ArgumentNullException(nameof(circularArcRoiDrawingService));
             _crossLinesDrawingService = crossLinesDrawingService ?? throw new ArgumentNullException(nameof(crossLinesDrawingService));
             _drawLineDrawingService = drawLineDrawingService ?? throw new ArgumentNullException(nameof(drawLineDrawingService));
+            _pointRoiService = pointRoiService ?? throw new ArgumentNullException(nameof(pointRoiService));
+            _pointRoiDrawingService = pointRoiDrawingService ?? throw new ArgumentNullException(nameof(pointRoiDrawingService));
 
             InitializeCommands();
             SubscribeToEvents();
@@ -110,7 +116,9 @@ namespace HyImageShow.ImageShowWPF.ViewModels
                 new BezierArcRoiDrawingService(),
                 new CircularArcRoiDrawingService(),
                 new CrossLinesDrawingService(),
-                new DrawLineDrawingService()
+                new DrawLineDrawingService(),
+                new PointRoiService(),
+                new PointRoiDrawingService()
             );
         }
 
@@ -131,7 +139,14 @@ namespace HyImageShow.ImageShowWPF.ViewModels
         public RoiItem SelectedRoiItem
         {
             get => _roiManagementService.SelectedRoiItem;
-            set => _roiManagementService.SelectedRoiItem = value;
+            set
+            {
+                if (_roiManagementService.SelectedRoiItem != value)
+                {
+                    _roiManagementService.SelectedRoiItem = value;
+                    OnPropertyChanged(nameof(SelectedRoiItem));
+                }
+            }
         }
 
         public bool ShowCrossLines
@@ -157,12 +172,10 @@ namespace HyImageShow.ImageShowWPF.ViewModels
             }
         }
 
-        public bool IsDrawLineMode => _lineService.IsDrawLineMode;
-        public bool IsRulerMode => _rulerService.IsRulerMode;
-
         // 工具按鈕的 Active 狀態
-        public bool IsDrawLineActive => IsDrawLineMode;
-        public bool IsRulerActive => IsRulerMode;
+        public bool IsDrawPointActive => _pointRoiService.IsDrawPointMode;
+        public bool IsDrawLineActive => _lineService.IsDrawLineMode;
+        public bool IsRulerActive => _rulerService.IsRulerMode;
         public bool IsRotRectRoiActive => _rotRectRoiService.IsRotRectRoiMode;
         public bool IsEllipseRoiActive => _ellipseRoiService.IsEllipseRoiMode;
         public bool IsPolygonRoiActive => _polygonRoiService.IsPolygonRoiMode;
@@ -188,6 +201,7 @@ namespace HyImageShow.ImageShowWPF.ViewModels
         public RelayCommand PolygonRoiCommand { get; private set; }
         public RelayCommand BezierArcRoiCommand { get; private set; }
         public RelayCommand CircularArcRoiCommand { get; private set; }
+        public RelayCommand DrawPointCommand { get; private set; }
         
         // Transform 控制命令
         public RelayCommand ZoomInCommand { get; private set; }
@@ -210,6 +224,7 @@ namespace HyImageShow.ImageShowWPF.ViewModels
             PolygonRoiCommand = new RelayCommand(EnablePolygonRoiMode);
             BezierArcRoiCommand = new RelayCommand(EnableBezierArcRoiMode);
             CircularArcRoiCommand = new RelayCommand(EnableCircularArcRoiMode);
+            DrawPointCommand = new RelayCommand(EnableDrawPointMode);
         }
 
         #endregion
@@ -570,6 +585,7 @@ namespace HyImageShow.ImageShowWPF.ViewModels
                 _polygonRoiDrawingService.ClearRois(_mainCanvas, _polygonRoiService.PolygonRois);
                 _bezierArcRoiDrawingService.ClearRois(_mainCanvas, _bezierArcRoiService.BezierArcRois, _bezierArcRoiService.CurrentBezierArcRoi);
                 _circularArcRoiDrawingService.ClearRois(_mainCanvas, _circularArcRoiService.CircularArcRois, _circularArcRoiService.CurrentCircularArcRoi);
+                _pointRoiDrawingService.ClearRois(_mainCanvas, _pointRoiService.Points, _pointRoiService.CurrentPoint);
 
                 // 再清資料層
                 _roiManagementService.ClearRoiItems();
@@ -580,6 +596,7 @@ namespace HyImageShow.ImageShowWPF.ViewModels
                 _polygonRoiService.PolygonRois.Clear();
                 _bezierArcRoiService.BezierArcRois.Clear();
                 _circularArcRoiService.CircularArcRois.Clear();
+                _pointRoiService.Points.Clear();
             }
         }
 
@@ -587,7 +604,6 @@ namespace HyImageShow.ImageShowWPF.ViewModels
         {
             DisableAllModes();
             _lineService.EnableDrawLineMode();
-            OnPropertyChanged(nameof(IsDrawLineMode));
             OnPropertyChanged(nameof(IsDrawLineActive));
         }
 
@@ -595,7 +611,6 @@ namespace HyImageShow.ImageShowWPF.ViewModels
         {
             DisableAllModes();
             _rulerService.EnableRulerMode();
-            OnPropertyChanged(nameof(IsRulerMode));
             OnPropertyChanged(nameof(IsRulerActive));
         }
 
@@ -634,6 +649,13 @@ namespace HyImageShow.ImageShowWPF.ViewModels
             OnPropertyChanged(nameof(IsCircularArcRoiActive));
         }
 
+        private void EnableDrawPointMode()
+        {
+            DisableAllModes();
+            _pointRoiService.EnableDrawPointMode();
+            OnPropertyChanged(nameof(IsDrawPointActive));
+        }
+
         private void DisableAllModes()
         {
             _lineService.DisableDrawLineMode();
@@ -643,8 +665,7 @@ namespace HyImageShow.ImageShowWPF.ViewModels
             _polygonRoiService.DisablePolygonRoiMode();
             _bezierArcRoiService.DisableBezierArcRoiMode();
             _circularArcRoiService.DisableCircularArcRoiMode();
-            OnPropertyChanged(nameof(IsDrawLineMode));
-            OnPropertyChanged(nameof(IsRulerMode));
+            _pointRoiService.DisableDrawPointMode();
             OnPropertyChanged(nameof(IsDrawLineActive));
             OnPropertyChanged(nameof(IsRulerActive));
             OnPropertyChanged(nameof(IsRotRectRoiActive));
@@ -652,6 +673,7 @@ namespace HyImageShow.ImageShowWPF.ViewModels
             OnPropertyChanged(nameof(IsPolygonRoiActive));
             OnPropertyChanged(nameof(IsBezierArcRoiActive));
             OnPropertyChanged(nameof(IsCircularArcRoiActive));
+            OnPropertyChanged(nameof(IsDrawPointActive));
         }
 
         #endregion
@@ -671,7 +693,8 @@ namespace HyImageShow.ImageShowWPF.ViewModels
             _bezierArcRoiService.BezierArcRoiUpdated += OnBezierArcRoiUpdated;
             _circularArcRoiService.CircularArcRoiCompleted += OnCircularArcRoiCompleted;
             _circularArcRoiService.CircularArcRoiUpdated += OnCircularArcRoiUpdated;
-            
+            _pointRoiService.PointCompleted += OnPointCompleted;
+
             // 訂閱十字線狀態變更事件
             _crossLinesService.CrossLinesStateChanged += OnCrossLinesStateChanged;
         }
@@ -682,7 +705,6 @@ namespace HyImageShow.ImageShowWPF.ViewModels
             _lineService.DisableDrawLineMode();
             
             // 通知 UI 更新畫線按鈕狀態
-            OnPropertyChanged(nameof(IsDrawLineMode));
             OnPropertyChanged(nameof(IsDrawLineActive));
             
             // 將完成的線條加入到 ROI 管理服務中
@@ -695,7 +717,6 @@ namespace HyImageShow.ImageShowWPF.ViewModels
             _rulerService.DisableRulerMode();
             
             // 通知 UI 更新量尺按鈕狀態
-            OnPropertyChanged(nameof(IsRulerMode));
             OnPropertyChanged(nameof(IsRulerActive));
             
             // 將完成的量尺加入到 ROI 管理服務中
@@ -799,6 +820,13 @@ namespace HyImageShow.ImageShowWPF.ViewModels
             OnPropertyChanged(nameof(ShowCrossLines));
         }
 
+        private void OnPointCompleted(PointItem pointItem)
+        {
+            _pointRoiService.DisableDrawPointMode();
+            OnPropertyChanged(nameof(IsDrawPointActive));
+            _roiManagementService.AddRoiItem(pointItem);
+        }
+
         #endregion
 
         #region Public Methods
@@ -813,6 +841,45 @@ namespace HyImageShow.ImageShowWPF.ViewModels
                 var bitmap = new BitmapImage();
                 bitmap.BeginInit();
                 bitmap.UriSource = new Uri(filePath, UriKind.Absolute);
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.EndInit();
+
+                var writable = new WriteableBitmap(bitmap);
+                ImageSource = writable;
+            }
+            catch (Exception ex)
+            {
+                ImageSource = null;
+                MessageBox.Show($"載入圖片失敗: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        public void LoadImage(BitmapSource bitmapSource)
+        {
+            if (bitmapSource == null)
+                return;
+
+            try
+            {
+                ImageSource = new WriteableBitmap(bitmapSource);
+            }
+            catch (Exception ex)
+            {
+                ImageSource = null;
+                MessageBox.Show($"載入圖片失敗: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        public void LoadImage(System.IO.Stream imageStream)
+        {
+            if (imageStream == null)
+                return;
+
+            try
+            {
+                var bitmap = new BitmapImage();
+                bitmap.BeginInit();
+                bitmap.StreamSource = imageStream;
                 bitmap.CacheOption = BitmapCacheOption.OnLoad;
                 bitmap.EndInit();
 
@@ -843,6 +910,7 @@ namespace HyImageShow.ImageShowWPF.ViewModels
             _polygonRoiDrawingService.SetMainCanvas(canvas);
             _bezierArcRoiDrawingService.SetMainCanvas(canvas);
             _circularArcRoiDrawingService.SetMainCanvas(canvas);
+            _pointRoiDrawingService.SetMainCanvas(canvas);
             // 設置服務的繪製服務引用
             _lineService.SetDrawingService(_drawLineDrawingService);
             _rulerService.SetDrawingService(_rulerDrawingService);
@@ -851,6 +919,7 @@ namespace HyImageShow.ImageShowWPF.ViewModels
             _polygonRoiService.SetDrawingService(_polygonRoiDrawingService);
             _bezierArcRoiService.SetDrawingService(_bezierArcRoiDrawingService);
             _circularArcRoiService.SetDrawingService(_circularArcRoiDrawingService);
+            _pointRoiService.SetDrawingService(_pointRoiDrawingService);
 
             _roiManagementService.SetCanvas(canvas);
             _mainCanvas = canvas;
@@ -944,6 +1013,7 @@ namespace HyImageShow.ImageShowWPF.ViewModels
         /// </summary>
         public void HandleMouseDown(Point position, Canvas canvas, bool isShift = false)
         {
+            RoiMouseDown?.Invoke();
             var hits = new List<(BaseItem roi, Action<Point, Canvas, bool> handle)>();
             var rulerHit = _rulerService.GetHitRoiItem(position);
             if (rulerHit != null) hits.Add((rulerHit, (p, c, s) => _rulerService.HandleMouseDown(p, c, s)));
@@ -959,6 +1029,8 @@ namespace HyImageShow.ImageShowWPF.ViewModels
             if (bezierHit != null) hits.Add((bezierHit, (p, c, s) => _bezierArcRoiService.HandleMouseDown(p, c, s)));
             var circularHit = _circularArcRoiService.GetHitRoiItem(position);
             if (circularHit != null) hits.Add((circularHit, (p, c, s) => _circularArcRoiService.HandleMouseDown(p, c, s)));
+            var pointHit = _pointRoiService.GetHitPointItem(position);
+            if (pointHit != null) hits.Add((pointHit, (p, c, s) => _pointRoiService.HandleMouseDown(p, c, s)));
             if (hits.Any())
             {
                 var top = hits.OrderByDescending(h => h.roi.ZIndex).First();
@@ -967,9 +1039,9 @@ namespace HyImageShow.ImageShowWPF.ViewModels
             else
             {
                 // 若無命中，根據目前啟用的模式創建新 ROI
-                if (IsDrawLineMode)
+                if (IsDrawLineActive)
                     _lineService.HandleMouseDown(position, canvas, isShift);
-                else if (IsRulerMode)
+                else if (IsRulerActive)
                     _rulerService.HandleMouseDown(position, canvas, isShift);
                 else if (IsRotRectRoiActive)
                     _rotRectRoiService.HandleMouseDown(position, canvas, isShift);
@@ -981,6 +1053,8 @@ namespace HyImageShow.ImageShowWPF.ViewModels
                     _bezierArcRoiService.HandleMouseDown(position, canvas, isShift);
                 else if (IsCircularArcRoiActive)
                     _circularArcRoiService.HandleMouseDown(position, canvas, isShift);
+                else if (IsDrawPointActive)
+                    _pointRoiService.HandleMouseDown(position, canvas, isShift);
             }
         }
 
@@ -997,9 +1071,7 @@ namespace HyImageShow.ImageShowWPF.ViewModels
             _polygonRoiService.HandleMouseMove(position, canvas);
             _bezierArcRoiService.HandleMouseMove(position, canvas);
             _circularArcRoiService.HandleMouseMove(position, canvas);
-            //var roiItem = _roiManagementService.RoiItems.FirstOrDefault(x => x.OriginalObject == _bezierArcRoiService.CurrentBezierArcRoi);
-            //roiItem?.GetType().GetMethod("OnPropertyChanged", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
-            //    ?.Invoke(roiItem, new object[] { "Point1Text" });
+            _pointRoiService.HandleMouseMove(position, canvas);
         }
 
         /// <summary>
@@ -1007,6 +1079,7 @@ namespace HyImageShow.ImageShowWPF.ViewModels
         /// </summary>
         public void HandleMouseUp(Point position, Canvas canvas)
         {
+            RoiMouseUp?.Invoke();
             // 將事件傳遞給各個服務
             _lineService.HandleMouseUp(position, canvas);
             _rulerService.HandleMouseUp(position, canvas);
@@ -1015,6 +1088,7 @@ namespace HyImageShow.ImageShowWPF.ViewModels
             _polygonRoiService.HandleMouseUp(position, canvas);
             _bezierArcRoiService.HandleMouseUp(position, canvas);
             _circularArcRoiService.HandleMouseUp(position, canvas);
+            _pointRoiService.HandleMouseUp(position, canvas);
         }
 
         /// <summary>
@@ -1083,6 +1157,9 @@ namespace HyImageShow.ImageShowWPF.ViewModels
                     
                     // 重新繪製圓弧ROI
                     _circularArcRoiDrawingService.DrawRois(_mainCanvas, _circularArcRoiService.CircularArcRois.ToList(), _circularArcRoiService.CurrentCircularArcRoi, ShowLabels);
+
+                    // 重新繪製點ROI
+                    _pointRoiDrawingService.DrawRois(_mainCanvas, _pointRoiService.Points.ToList(), _pointRoiService.CurrentPoint, ShowLabels);
                 }
             }
             catch (Exception ex)
@@ -1114,7 +1191,14 @@ namespace HyImageShow.ImageShowWPF.ViewModels
             // DrawLine
             foreach (var item in _lineService.DrawLines)
                 AllRoiItems.Add(item);
+            // Point
+            foreach (var item in _pointRoiService.Points)
+                AllRoiItems.Add(item);
         }
+
+        // 新增：ROI 框選滑鼠事件
+        public event Action RoiMouseDown;
+        public event Action RoiMouseUp;
 
         #endregion
 

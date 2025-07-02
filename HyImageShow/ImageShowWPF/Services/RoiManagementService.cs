@@ -1320,6 +1320,26 @@ namespace HyImageShow.ImageShowWPF.Services
                 roiHighlightStoryboards[roiItem] = storyboard;
                 storyboard.Begin();
             }
+            else if (roiItem.OriginalObject is PointItem pointItem)
+            {
+                // 停止之前的動畫
+                pointItem.PointScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, null);
+                pointItem.PointScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, null);
+                pointItem.PointScale.ScaleX = 1.0;
+                pointItem.PointScale.ScaleY = 1.0;
+
+                // 建立縮放動畫
+                var scaleAnim = new System.Windows.Media.Animation.DoubleAnimation
+                {
+                    From = 1.0,
+                    To = 1.5,
+                    Duration = TimeSpan.FromMilliseconds(300),
+                    AutoReverse = true,
+                    RepeatBehavior = System.Windows.Media.Animation.RepeatBehavior.Forever
+                };
+                pointItem.PointScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, scaleAnim);
+                pointItem.PointScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, scaleAnim);
+            }
         }
 
         public void StopRoiHighlightAnimation(RoiItem roiItem)
@@ -1338,6 +1358,15 @@ namespace HyImageShow.ImageShowWPF.Services
             if (roiItem != null && roiStrokeThicknessAnimations.ContainsKey(roiItem))
             {
                 roiStrokeThicknessAnimations.Remove(roiItem);
+            }
+
+            // 停止 PointItem 的動畫
+            if (roiItem?.OriginalObject is PointItem pointItem)
+            {
+                pointItem.PointScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, null);
+                pointItem.PointScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, null);
+                pointItem.PointScale.ScaleX = 1.0;
+                pointItem.PointScale.ScaleY = 1.0;
             }
         }
 

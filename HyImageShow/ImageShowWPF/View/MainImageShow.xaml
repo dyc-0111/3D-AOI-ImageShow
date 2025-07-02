@@ -39,6 +39,9 @@
         <DataTemplate x:Key="CircularArcRoiCardTemplate">
             <roiCards:CircularArcRoiCard />
         </DataTemplate>
+        <DataTemplate x:Key="PointRoiCardTemplate">
+            <roiCards:PointRoiCard />
+        </DataTemplate>
         <roiCards:RoiCardTemplateSelector x:Key="RoiCardTemplateSelector"
             LineTemplate="{StaticResource LineRoiCardTemplate}"
             RulerTemplate="{StaticResource RulerRoiCardTemplate}"
@@ -46,7 +49,8 @@
             PolygonTemplate="{StaticResource PolygonRoiCardTemplate}"
             RotRectTemplate="{StaticResource RotRectRoiCardTemplate}"
             BezierArcTemplate="{StaticResource BezierArcRoiCardTemplate}"
-            CircularArcTemplate="{StaticResource CircularArcRoiCardTemplate}" />
+            CircularArcTemplate="{StaticResource CircularArcRoiCardTemplate}"
+            PointTemplate="{StaticResource PointRoiCardTemplate}" />
         
     </UserControl.Resources>
 
@@ -100,6 +104,11 @@
                            Margin="16,0" />
                 
                 <!-- ROI工具按鈕 -->
+                <controls:ToolButton Content="標點"
+                                     Command="{Binding DrawPointCommand}"
+                                     ButtonWidth="60"
+                                     ButtonType="Tool"
+                                     IsActive="{Binding IsDrawPointActive}" />
                 <controls:ToolButton Content="畫線"
                                     Command="{Binding DrawLineCommand}"
                                     ButtonWidth="60"

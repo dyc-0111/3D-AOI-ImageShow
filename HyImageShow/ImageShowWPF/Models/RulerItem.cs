@@ -180,7 +180,7 @@ namespace HyImageShow.ImageShowWPF.Models
         public ScaleTransform Point2Scale { get; } = new ScaleTransform(1, 1);
 
         // BaseItem 抽象成員實作
-        public override string ItemType => "量尺";
+        public override string ItemType => "Ruler";
 
         public override Point Center => CalculateMidPoint(Point1, Point2);
 

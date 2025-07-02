@@ -13,6 +13,7 @@ namespace HyImageShow.ImageShowWPF.View.RoiCards
         public DataTemplate RotRectTemplate { get; set; }
         public DataTemplate BezierArcTemplate { get; set; }
         public DataTemplate CircularArcTemplate { get; set; }
+        public DataTemplate PointTemplate { get; set; }
 
         public override DataTemplate SelectTemplate(object item, DependencyObject container)
         {
@@ -22,28 +23,23 @@ namespace HyImageShow.ImageShowWPF.View.RoiCards
             switch (type)
             {
                 case "Line":
-                case "線段":
                     return LineTemplate;
                 case "Ruler":
-                case "量尺":
                     return RulerTemplate;
                 case "Ellipse":
-                case "橢圓":
                     return EllipseTemplate;
                 case "Polygon":
-                case "多邊形":
                     return PolygonTemplate;
                 case "RotRect":
-                case "旋轉矩形":
                     return RotRectTemplate;
                 case "BezierArc":
-                case "貝塞爾弧":
                     return BezierArcTemplate;
                 case "CircularArc":
-                case "圓弧":
                     return CircularArcTemplate;
+                case "Point":
+                    return PointTemplate;
                 default:
-                    return LineTemplate;
+                    return PointTemplate;
             }
         }
     }

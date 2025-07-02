@@ -12,7 +12,8 @@ namespace HyImageShow.ImageShowWPF.Data
         Line,
         Ruler,
         BezierArc,
-        CircularArc
+        CircularArc,
+        Point
     }
 
     public class RoiData

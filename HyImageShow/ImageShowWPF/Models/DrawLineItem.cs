@@ -183,7 +183,7 @@ namespace HyImageShow.ImageShowWPF.Models
         public double Length => CalculateDistance(P1, P2);
 
         // BaseItem 抽象成員實作
-        public override string ItemType => "線條";
+        public override string ItemType => "Line";
 
         public override Point Center => MidPoint;
 

@@ -365,7 +365,7 @@ namespace HyImageShow.ImageShowWPF.Models
         public string PointsText => Point3Text;
 
         // BaseItem 抽象成員實作
-        public override string ItemType => "多邊形";
+        public override string ItemType => "Polygon";
 
         public override Point Center => CenterPoint;
 
