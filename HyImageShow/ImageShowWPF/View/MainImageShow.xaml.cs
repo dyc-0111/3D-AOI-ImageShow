@@ -19,7 +19,7 @@ namespace HyImageShow.ImageShowWPF.View
     /// <summary>
     /// MainImageShow.xaml 的互動邏輯
     /// </summary>
-    public partial class MainImageShow : UserControl, IDisposable
+    public partial class MainImageShow : UserControl, IDisposable, INotifyPropertyChanged
     {
         private readonly CrossLinesDrawingService _crossLinesDrawingService;
         private ScaleTransform _mainCanvasScaleTransform;
@@ -27,6 +27,12 @@ namespace HyImageShow.ImageShowWPF.View
         private bool isDraggingCanvas = false;
         private Point lastMousePosition;
         private bool _disposed = false;
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        protected void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
 
         public MainImageShow()
         {
@@ -36,16 +42,30 @@ namespace HyImageShow.ImageShowWPF.View
             // 訂閱 DataContext 變更事件
             this.DataContextChanged += OnDataContextChanged;
             
-            MainCanvas.MouseWheel += OnMouseWheel;
-            MainCanvas.MouseDown += OnMouseDown;
-            MainCanvas.MouseUp += OnMouseUp;
-            MainCanvas.MouseMove += OnMouseMove;
+            // 綁定滑鼠事件到 ImageViewGrid
+            this.Loaded += (s, e) => {
+                if (ImageViewGrid != null)
+                {
+                    ImageViewGrid.MouseWheel += OnMouseWheel;
+                    ImageViewGrid.MouseDown += OnMouseDown;
+                    ImageViewGrid.MouseUp += OnMouseUp;
+                    ImageViewGrid.MouseMove += OnMouseMove;
+                }
+            };
             
             // 添加全局鍵盤事件處理器
             this.KeyDown += OnKeyDown;
             
             // 訂閱應用程式級別的鍵盤事件
             SubscribeToMainWindowEvents();
+            
+            // 為ListView添加鍵盤事件處理
+            this.Loaded += (s, e) => {
+                if (RoiListView != null)
+                {
+                    RoiListView.KeyDown += OnRoiListViewKeyDown;
+                }
+            };
         }
 
         private void SubscribeToMainWindowEvents()
@@ -92,12 +112,12 @@ namespace HyImageShow.ImageShowWPF.View
                 this.KeyDown -= OnKeyDown;
                 this.DataContextChanged -= OnDataContextChanged;
                 
-                if (MainCanvas != null)
+                if (ImageViewGrid != null)
                 {
-                    MainCanvas.MouseWheel -= OnMouseWheel;
-                    MainCanvas.MouseDown -= OnMouseDown;
-                    MainCanvas.MouseUp -= OnMouseUp;
-                    MainCanvas.MouseMove -= OnMouseMove;
+                    ImageViewGrid.MouseWheel -= OnMouseWheel;
+                    ImageViewGrid.MouseDown -= OnMouseDown;
+                    ImageViewGrid.MouseUp -= OnMouseUp;
+                    ImageViewGrid.MouseMove -= OnMouseMove;
                 }
                 
                 if (MainCanvasGrid != null)
@@ -105,9 +125,24 @@ namespace HyImageShow.ImageShowWPF.View
                     MainCanvasGrid.SizeChanged -= OnMainCanvasGridSizeChanged;
                 }
                 
+                if (ImageViewGrid != null)
+                {
+                    ImageViewGrid.SizeChanged -= OnImageViewGridSizeChanged;
+                }
+                
+                if (MainImage != null)
+                {
+                    MainImage.SizeChanged -= OnMainImageSizeChanged;
+                }
+                
                 if (ViewModel != null)
                 {
                     ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+                }
+                
+                if (RoiListView != null)
+                {
+                    RoiListView.KeyDown -= OnRoiListViewKeyDown;
                 }
                 
                 _disposed = true;
@@ -118,7 +153,7 @@ namespace HyImageShow.ImageShowWPF.View
 
         private void OnMouseMove(object sender, MouseEventArgs e)
         {
-            Point pos = e.GetPosition(MainCanvas);
+            Point pos = e.GetPosition(ImageViewGrid);
 
             if (isDraggingCanvas)
             {
@@ -130,8 +165,20 @@ namespace HyImageShow.ImageShowWPF.View
             }
             else
             {
-                // 處理 ROI 互動 - 使用 MainCanvas，這樣 ROI 會跟著圖片縮放
-                ViewModel?.HandleMouseMove(pos, MainCanvas);
+                // 使用 MainImage 的實際邊界而不是 MainCanvas
+                if (MainImage?.Source != null && MainImage.ActualWidth > 0 && MainImage.ActualHeight > 0)
+                {
+                    // 調試：輸出座標和邊界資訊
+                    System.Diagnostics.Debug.WriteLine($"[MainImageShow] Mouse: ({pos.X:F1}, {pos.Y:F1}), MainImage: {MainImage.ActualWidth:F1}x{MainImage.ActualHeight:F1}, MainCanvas: {MainCanvas.ActualWidth:F1}x{MainCanvas.ActualHeight:F1}");
+                    
+                    // 檢查滑鼠座標是否與MainCanvas座標系匹配
+                    Point canvasPos = pos; // ImageViewGrid 和 MainCanvas 應該是同一座標系
+                    ViewModel?.HandleMouseMoveWithImageBounds(canvasPos, MainCanvas, 0, 0, MainImage.ActualWidth, MainImage.ActualHeight);
+                }
+                else
+                {
+                    ViewModel?.HandleMouseMove(pos, MainCanvas);
+                }
             }
 
             // 顯示滑鼠座標
@@ -140,19 +187,28 @@ namespace HyImageShow.ImageShowWPF.View
 
         private void OnMouseDown(object sender, MouseButtonEventArgs e)
         {
-            Point pos = e.GetPosition(MainCanvas);
+            Point pos = e.GetPosition(ImageViewGrid);
             
             if (e.ChangedButton == MouseButton.Middle)
             {
                 isDraggingCanvas = true;
                 lastMousePosition = e.GetPosition(MainCanvasGrid);
-                MainCanvas.CaptureMouse();
+                ImageViewGrid.CaptureMouse();
             }
             else if (e.ChangedButton == MouseButton.Left)
             {
                 // 處理 ROI 互動 - 使用 MainCanvas，這樣 ROI 會跟著圖片縮放
                 bool multiDragRoi = Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift);
-                ViewModel.HandleMouseDown(pos, MainCanvas, multiDragRoi);
+                
+                // 同樣在MouseDown時也使用MainImage邊界
+                if (MainImage?.Source != null && MainImage.ActualWidth > 0 && MainImage.ActualHeight > 0)
+                {
+                    ViewModel.HandleMouseDownWithImageBounds(pos, MainCanvas, multiDragRoi, 0, 0, MainImage.ActualWidth, MainImage.ActualHeight);
+                }
+                else
+                {
+                    ViewModel.HandleMouseDown(pos, MainCanvas, multiDragRoi);
+                }
             }
             else if (e.ChangedButton == MouseButton.Right)
             {
@@ -163,12 +219,12 @@ namespace HyImageShow.ImageShowWPF.View
 
         private void OnMouseUp(object sender, MouseButtonEventArgs e)
         {
-            Point pos = e.GetPosition(MainCanvas);
+            Point pos = e.GetPosition(ImageViewGrid);
             
             if (e.ChangedButton == MouseButton.Middle)
             {
                 isDraggingCanvas = false;
-                MainCanvas.ReleaseMouseCapture();
+                ImageViewGrid.ReleaseMouseCapture();
             }
             else if (e.ChangedButton == MouseButton.Left)
             {
@@ -179,9 +235,21 @@ namespace HyImageShow.ImageShowWPF.View
 
         private void OnMouseWheel(object sender, MouseWheelEventArgs e)
         {
+            if (MainImage?.Source == null) return;
+
             double zoom = e.Delta > 0 ? 1.1 : 0.9;
-            MainCanvasScaleTransform.ScaleX *= zoom;
-            MainCanvasScaleTransform.ScaleY *= zoom;
+            double newScaleX = MainCanvasScaleTransform.ScaleX * zoom;
+            double newScaleY = MainCanvasScaleTransform.ScaleY * zoom;
+
+            // 限制縮放範圍
+            const double minZoom = 0.1;
+            const double maxZoom = 10.0;
+            
+            newScaleX = Math.Max(minZoom, Math.Min(maxZoom, newScaleX));
+            newScaleY = Math.Max(minZoom, Math.Min(maxZoom, newScaleY));
+
+            MainCanvasScaleTransform.ScaleX = newScaleX;
+            MainCanvasScaleTransform.ScaleY = newScaleY;
         }
 
         private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
@@ -206,11 +274,26 @@ namespace HyImageShow.ImageShowWPF.View
                 // 訂閱ShowCrossLines屬性變更事件
                 ViewModel.PropertyChanged += OnViewModelPropertyChanged;
                 
+                // 訂閱ImageViewGrid尺寸變更事件來同步Canvas尺寸
+                if (ImageViewGrid != null)
+                {
+                    ImageViewGrid.SizeChanged += OnImageViewGridSizeChanged;
+                }
+                
+                // 訂閱MainImage尺寸變更事件來重新繪製CrossLine
+                if (MainImage != null)
+                {
+                    MainImage.SizeChanged += OnMainImageSizeChanged;
+                }
+                
                 // 訂閱MainCanvasGrid尺寸變更事件
                 MainCanvasGrid.SizeChanged += OnMainCanvasGridSizeChanged;
                 
                 // 初始化十字線
                 UpdateCrossLines();
+
+                // 監聽 ROI 清單收合/展開，動態調整欄寬
+                AdjustRoiColumnWidth(ViewModel.IsRoiPanelVisible);
             }
         }
 
@@ -220,11 +303,32 @@ namespace HyImageShow.ImageShowWPF.View
             UpdateCrossLines();
         }
 
+        private void OnImageViewGridSizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            // Canvas 尺寸已通過綁定自動同步，這裡可以處理其他邏輯
+            // 例如重新繪製十字線或通知 ViewModel
+        }
+
+        private void OnMainImageSizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            // 當MainImage尺寸改變時，重新繪製十字線
+            UpdateCrossLines();
+        }
+
         private void OnViewModelPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(ImageShowViewModel.ShowCrossLines))
             {
                 UpdateCrossLines();
+            }
+            else if (e.PropertyName == nameof(ImageShowViewModel.IsRoiPanelVisible))
+            {
+                AdjustRoiColumnWidth(ViewModel.IsRoiPanelVisible);
+                OnPropertyChanged(nameof(PopupPlacementTarget));
+            }
+            else if (e.PropertyName == nameof(ImageShowViewModel.IsToolbarVisible))
+            {
+                AdjustToolbarRowHeight(ViewModel.IsToolbarVisible);
             }
         }
 
@@ -235,51 +339,31 @@ namespace HyImageShow.ImageShowWPF.View
                 return;
             }
 
-            // 使用MainCanvasGrid的尺寸，因為CrossLinesOverlay現在在MainCanvasGrid內部
-            double canvasWidth = MainCanvasGrid.ActualWidth;
-            double canvasHeight = MainCanvasGrid.ActualHeight;
-
             if (ViewModel.ShowCrossLines)
             {
-                // 檢查Canvas尺寸，如果為0則等待SizeChanged事件
-                if (canvasWidth <= 0 || canvasHeight <= 0)
+                if (MainImage?.Source != null && MainImage.ActualWidth > 0 && MainImage.ActualHeight > 0)
                 {
-                    return;
+                    // CrossLine 畫在 MainCanvas 上，顯示在 MainImage 的正中央
+                    // 使用 MainImage 的實際尺寸
+                    _crossLinesDrawingService.DrawCrossLines(MainCanvas, MainImage.ActualWidth, MainImage.ActualHeight);
                 }
-                
-                _crossLinesDrawingService.DrawCrossLines(OverlayCanvas, canvasWidth, canvasHeight);
             }
             else
             {
-                _crossLinesDrawingService.ClearCrossLines(OverlayCanvas);
+                _crossLinesDrawingService.ClearCrossLines(MainCanvas);
             }
         }
 
         public void FitImageToWindow()
         {
-            if (MainCanvas == null || MainCanvasScaleTransform == null || MainCanvasTranslateTransform == null)
+            if (MainImage?.Source == null || MainCanvasScaleTransform == null || MainCanvasTranslateTransform == null)
                 return;
 
-            var image = MainCanvas.Children.OfType<Image>().FirstOrDefault();
-            if (image?.Source == null)
-                return;
-
-            double imgWidth = image.Source.Width;
-            double imgHeight = image.Source.Height;
-            double gridWidth = MainCanvasGrid.ActualWidth;
-            double gridHeight = MainCanvasGrid.ActualHeight;
-
-            if (imgWidth <= 0 || imgHeight <= 0 || gridWidth <= 0 || gridHeight <= 0)
-                return;
-
-            double scale = Math.Min(gridWidth / imgWidth, gridHeight / imgHeight);
-            double offsetX = (gridWidth - imgWidth * scale) / 2;
-            double offsetY = (gridHeight - imgHeight * scale) / 2;
-
-            MainCanvasScaleTransform.ScaleX = scale;
-            MainCanvasScaleTransform.ScaleY = scale;
-            MainCanvasTranslateTransform.X = offsetX;
-            MainCanvasTranslateTransform.Y = offsetY;
+            // 重置縮放和平移，讓 Viewbox 自動處理置中
+            MainCanvasScaleTransform.ScaleX = 1.0;
+            MainCanvasScaleTransform.ScaleY = 1.0;
+            MainCanvasTranslateTransform.X = 0;
+            MainCanvasTranslateTransform.Y = 0;
         }
 
         private void OnKeyDown(object sender, KeyEventArgs e)
@@ -293,6 +377,16 @@ namespace HyImageShow.ImageShowWPF.View
         }
 
         private void OnMainWindowKeyDown(object sender, KeyEventArgs e)
+        {
+            if (ViewModel != null)
+            {
+                // 將鍵盤事件傳遞給ViewModel處理
+                ViewModel.HandleKeyDown(e.Key);
+                e.Handled = true;
+            }
+        }
+
+        private void OnRoiListViewKeyDown(object sender, KeyEventArgs e)
         {
             if (ViewModel != null)
             {
@@ -319,6 +413,17 @@ namespace HyImageShow.ImageShowWPF.View
                 );
                 ViewModel.PropertyChanged += OnViewModelPropertyChanged;
                 MainCanvasGrid.SizeChanged += OnMainCanvasGridSizeChanged;
+                
+                if (ImageViewGrid != null)
+                {
+                    ImageViewGrid.SizeChanged += OnImageViewGridSizeChanged;
+                }
+                
+                if (MainImage != null)
+                {
+                    MainImage.SizeChanged += OnMainImageSizeChanged;
+                }
+                
                 UpdateCrossLines();
             }
         }
@@ -465,6 +570,25 @@ namespace HyImageShow.ImageShowWPF.View
                 }
                 lineDrawingService?.DrawRois(MainCanvas, lineService.DrawLines.ToList(), null, true);
             }
+            // Point
+            var pointServiceField = typeof(ImageShowViewModel).GetField("_pointRoiService", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var pointService = pointServiceField?.GetValue(ViewModel) as HyImageShow.ImageShowWPF.Services.PointRoiService;
+            var pointDrawingServiceField = typeof(ImageShowViewModel).GetField("_pointRoiDrawingService", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var pointDrawingService = pointDrawingServiceField?.GetValue(ViewModel) as HyImageShow.ImageShowWPF.Services.PointRoiDrawingService;
+            if (pointService != null)
+            {
+                pointService.Points.Clear();
+                foreach (var data in roiDataList)
+                {
+                    if (data.Type == RoiType.Point)
+                    {
+                        var roi = RoiDataConverter.ToPointItem(data);
+                        pointService.Points.Add(roi);
+                        roiManagementService?.AddRoiItem(roi);
+                    }
+                }
+                pointDrawingService?.DrawRois(MainCanvas, pointService.Points.ToList(), null, true);
+            }
             // 同步 ListView
             (ViewModel as HyImageShow.ImageShowWPF.ViewModels.ImageShowViewModel)?.RefreshAllRoiItems();
         }
@@ -530,7 +654,50 @@ namespace HyImageShow.ImageShowWPF.View
                 foreach (var item in lineService.DrawLines)
                     result.Add(RoiDataConverter.FromLineItem(item));
             }
+            // Point
+            var pointServiceField = typeof(ImageShowViewModel).GetField("_pointRoiService", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var pointService = lineServiceField?.GetValue(ViewModel) as HyImageShow.ImageShowWPF.Services.PointRoiService;
+            if (pointService != null)
+            {
+                foreach (var item in pointService.Points)
+                    result.Add(RoiDataConverter.FromPointItem(item));
+            }
             return result;
+        }
+
+        private void AdjustRoiColumnWidth(bool isVisible)
+        {
+            var storyboard = (System.Windows.Media.Animation.Storyboard)FindResource(isVisible ? "ExpandRoiPanel" : "CollapseRoiPanel");
+            storyboard.Begin();
+        }
+
+        private void AdjustToolbarRowHeight(bool isVisible)
+        {
+            var storyboard = (System.Windows.Media.Animation.Storyboard)FindResource(isVisible ? "ExpandToolbar" : "CollapseToolbar");
+            storyboard.Begin();
+        }
+
+        public void ToggleToolbarVisible(bool isVisible = true)
+        {
+            if (ViewModel != null)
+            {
+                ViewModel.IsToolbarVisible = isVisible;
+            }
+        }
+
+        public void ToggleRoiPanelVisible(bool isVisible = true)
+        {
+            if (ViewModel != null)
+            {
+                ViewModel.IsRoiPanelVisible = isVisible;
+            }
+        }
+        public UIElement PopupPlacementTarget
+        {
+            get
+            {
+                return ViewModel != null && ViewModel.IsRoiPanelVisible ? (UIElement)RoiPanel : (UIElement)MainCanvasGrid;
+            }
         }
     }
 }

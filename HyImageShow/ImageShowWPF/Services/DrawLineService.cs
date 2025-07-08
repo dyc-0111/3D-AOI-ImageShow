@@ -26,7 +26,6 @@ namespace HyImageShow.ImageShowWPF.Services
 
         public bool AllowMultiDrag { get; set; } = false; // 預設單一拖曳
 
-
         public DrawLineService()
         {
             // 初始化樣式字典，與主視圖保持一致
@@ -44,10 +43,9 @@ namespace HyImageShow.ImageShowWPF.Services
         /// </summary>
         public bool ShowLabels { get; set; }
 
-        
-
         public event Action<LineItem> LineCompleted;
         public event Action<LineItem> LineUpdated;
+        public event Action<LineItem> LineRemoved;
         public event Action LinesCleared;
 
         /// <summary>
@@ -134,23 +132,24 @@ namespace HyImageShow.ImageShowWPF.Services
 
         public void HandleMouseMove(Point pos, Canvas canvas)
         {
-            // 處理繪製新線條的即時預覽（只有在畫線模式下）
+            double maxX = canvas.ActualWidth;
+            double maxY = canvas.ActualHeight;
             if (IsDrawLineMode && IsDrawingLine && CurrentDrawLine != null)
             {
-                CurrentDrawLine.P2 = pos;
+                var clamp = HyImageShow.ImageShowWPF.Models.CanvasBoundaryHelper.ClampLine(CurrentDrawLine.P1, pos, 0, 0, maxX, maxY);
+                CurrentDrawLine.P2 = clamp.p2;
                 if (drawingService != null)
                 {
                     drawingService.UpdateLineVisual(CurrentDrawLine);
                 }
-                return; // 如果正在畫線，優先處理，不處理拖曳
+                return;
             }
-
-            // 處理拖曳現有線條（無論模式是否開啟）
             foreach (var lineItem in DrawLines)
             {
                 if (lineItem.IsDraggingPoint1)
                 {
-                    lineItem.P1 = pos;
+                    var clamp = HyImageShow.ImageShowWPF.Models.CanvasBoundaryHelper.ClampLine(lineItem.P2, pos, 0, 0, maxX, maxY);
+                    lineItem.P1 = clamp.p2;
                     if (drawingService != null)
                     {
                         drawingService.UpdateLineVisual(lineItem);
@@ -159,7 +158,8 @@ namespace HyImageShow.ImageShowWPF.Services
                 }
                 else if (lineItem.IsDraggingPoint2)
                 {
-                    lineItem.P2 = pos;
+                    var clamp = HyImageShow.ImageShowWPF.Models.CanvasBoundaryHelper.ClampLine(lineItem.P1, pos, 0, 0, maxX, maxY);
+                    lineItem.P2 = clamp.p2;
                     if (drawingService != null)
                     {
                         drawingService.UpdateLineVisual(lineItem);
@@ -169,14 +169,20 @@ namespace HyImageShow.ImageShowWPF.Services
                 else if (lineItem.IsDraggingLine)
                 {
                     Vector delta = pos - lineItem.LastDragPos;
-                    lineItem.P1 = (Point)(lineItem.P1 + delta);
-                    lineItem.P2 = (Point)(lineItem.P2 + delta);
-                    lineItem.LastDragPos = pos;
-                    if (drawingService != null)
+                    Point newP1 = lineItem.P1 + delta;
+                    Point newP2 = lineItem.P2 + delta;
+                    if (newP1.X >= 0 && newP1.X <= maxX && newP1.Y >= 0 && newP1.Y <= maxY &&
+                        newP2.X >= 0 && newP2.X <= maxX && newP2.Y >= 0 && newP2.Y <= maxY)
                     {
-                        drawingService.UpdateLineVisual(lineItem);
+                        lineItem.P1 = newP1;
+                        lineItem.P2 = newP2;
+                        lineItem.LastDragPos = pos;
+                        if (drawingService != null)
+                        {
+                            drawingService.UpdateLineVisual(lineItem);
+                        }
+                        LineUpdated?.Invoke(lineItem);
                     }
-                    LineUpdated?.Invoke(lineItem);
                 }
             }
         }
@@ -253,6 +259,31 @@ namespace HyImageShow.ImageShowWPF.Services
                 drawingService.ClearLines(mainCanvas, DrawLines, CurrentDrawLine);
             }
             LinesCleared?.Invoke();
+        }
+
+        public override void RemoveRoi(LineItem lineRoi, Canvas canvas)
+        {
+            if (lineRoi == null || canvas == null) return;
+            
+            // 如果是當前繪製的線條，清除當前狀態
+            if (CurrentDrawLine == lineRoi)
+            {
+                CurrentDrawLine = null;
+                IsDrawingLine = false;
+            }
+            
+            // 從Canvas清除視覺元素
+            if (drawingService != null)
+            {
+                drawingService.ClearRois(canvas, new List<LineItem> { lineRoi });
+            }
+            
+            // 從集合中移除
+            if (DrawLines.Remove(lineRoi))
+            {
+                // 觸發移除事件
+                LineRemoved?.Invoke(lineRoi);
+            }
         }
 
         public void RedrawAllLines(Canvas canvas, bool showLabels = true)
@@ -354,5 +385,6 @@ namespace HyImageShow.ImageShowWPF.Services
             }
             return null;
         }
+
     }
 }

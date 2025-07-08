@@ -87,6 +87,10 @@ namespace HyImageShow.ImageShowWPF.Services
             {
                 circularArcRoiItem.PropertyChanged += OnCircularArcRoiItemPropertyChanged;
             }
+            else if (originalObject is PointItem pointItem)
+            {
+                pointItem.PropertyChanged += OnPointItemPropertyChanged;
+            }
 
             roiItems.Add(roiItem);
             
@@ -127,6 +131,10 @@ namespace HyImageShow.ImageShowWPF.Services
                 else if (roiItem.OriginalObject is CircularArcRoiItem circularArcRoiItem)
                 {
                     circularArcRoiItem.PropertyChanged -= OnCircularArcRoiItemPropertyChanged;
+                }
+                else if (roiItem.OriginalObject is PointItem pointItem)
+                {
+                    pointItem.PropertyChanged -= OnPointItemPropertyChanged;
                 }
                 
                 roiItems.Remove(roiItem);
@@ -174,6 +182,10 @@ namespace HyImageShow.ImageShowWPF.Services
                 else if (roiItem.OriginalObject is CircularArcRoiItem circularArcRoiItem)
                 {
                     circularArcRoiItem.PropertyChanged -= OnCircularArcRoiItemPropertyChanged;
+                }
+                else if (roiItem.OriginalObject is PointItem pointItem)
+                {
+                    pointItem.PropertyChanged -= OnPointItemPropertyChanged;
                 }
             }
 
@@ -1527,6 +1539,23 @@ namespace HyImageShow.ImageShowWPF.Services
                  e.PropertyName == nameof(CircularArcRoiItem.ChordLength)))
             {
                 var roiItem = roiItems.FirstOrDefault(r => r.OriginalObject == circularArcRoiItem);
+                if (roiItem != null)
+                {
+                    // RoiItem 現在繼承 BaseItem，會自動從原始物件獲取最新資料
+                    // 不需要手動更新，因為 RoiItem 會監聽原始物件的屬性變更
+                }
+            }
+        }
+
+        private void OnPointItemPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            // 當 PointItem 的屬性變更時，更新對應的 ROI 項目
+            if (sender is PointItem pointItem && 
+                (e.PropertyName == nameof(PointItem.Position) ||
+                 e.PropertyName == nameof(PointItem.DisplayText) ||
+                 e.PropertyName == nameof(PointItem.SimpleDisplayText)))
+            {
+                var roiItem = roiItems.FirstOrDefault(r => r.OriginalObject == pointItem);
                 if (roiItem != null)
                 {
                     // RoiItem 現在繼承 BaseItem，會自動從原始物件獲取最新資料

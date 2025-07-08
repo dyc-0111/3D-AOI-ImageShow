@@ -150,6 +150,26 @@ namespace HyImageShow.ImageShowWPF.Services
             }
         }
 
+        public override void ClearRois(Canvas canvas, IEnumerable<LineItem> rois)
+        {
+            if (canvas == null) return;
+            foreach (var roi in rois.ToList())
+            {
+                if (roi.Line != null && canvas.Children.Contains(roi.Line))
+                    canvas.Children.Remove(roi.Line);
+                if (roi.Point1 != null && canvas.Children.Contains(roi.Point1))
+                    canvas.Children.Remove(roi.Point1);
+                if (roi.Point2 != null && canvas.Children.Contains(roi.Point2))
+                    canvas.Children.Remove(roi.Point2);
+                if (roi.Label != null && canvas.Children.Contains(roi.Label))
+                    canvas.Children.Remove(roi.Label);
+                roi.Line = null;
+                roi.Point1 = null;
+                roi.Point2 = null;
+                roi.Label = null;
+            }
+        }
+
         public void DrawSingleLine(LineItem lineItem, Canvas canvas, bool showLabels = true)
         {
             if (lineItem == null) return;

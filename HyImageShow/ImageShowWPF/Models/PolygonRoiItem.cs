@@ -24,6 +24,7 @@ namespace HyImageShow.ImageShowWPF.Models
         private Point lastDragPos;
         private Point dragStart;
         private List<Point> dragStartPoints;
+        private Point dragStartCenter;
 
         public PolygonRoiItem()
         {
@@ -198,6 +199,22 @@ namespace HyImageShow.ImageShowWPF.Models
                 {
                     dragStartPoints = value;
                     OnPropertyChanged(nameof(DragStartPoints));
+                }
+            }
+        }
+
+        /// <summary>
+        /// 拖曳開始時的中心點
+        /// </summary>
+        public Point DragStartCenter
+        {
+            get => dragStartCenter;
+            set
+            {
+                if (dragStartCenter != value)
+                {
+                    dragStartCenter = value;
+                    OnPropertyChanged(nameof(DragStartCenter));
                 }
             }
         }
@@ -393,6 +410,7 @@ namespace HyImageShow.ImageShowWPF.Models
             IsDraggingRotate = false;
             IsDraggingPoint = false;
             DraggingPointIndex = -1;
+            DragStartCenter = new Point(0, 0);
         }
 
         public override void CalculateProperties()

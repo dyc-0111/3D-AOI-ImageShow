@@ -129,6 +129,10 @@ namespace HyImageShow.ImageShowWPF.Services
                         hitRoi.IsDraggingPoint = true;
                         hitRoi.DraggingPointIndex = i;
                         hitRoi.LastDragPos = pos;
+                        
+                        // 🔧 修正：記錄拖曳開始時的固定中心點
+                        hitRoi.DragStartCenter = hitRoi.Center;
+                        
                         ZIndexManager.Instance.BringToFront(hitRoi);
                         return;
                     }
@@ -167,6 +171,12 @@ namespace HyImageShow.ImageShowWPF.Services
             }
             lastUpdateTime = now;
 
+            // 取得Canvas邊界
+            double minX = 0;
+            double minY = 0;
+            double maxX = canvas.ActualWidth;
+            double maxY = canvas.ActualHeight;
+
             // 1. 創建中多邊形
             if (currentPolygonRoi != null && !currentPolygonRoi.IsCompleted)
             {
@@ -181,14 +191,33 @@ namespace HyImageShow.ImageShowWPF.Services
                 // 拖曳頂點
                 if (roi.IsDraggingPoint && roi.DraggingPointIndex >= 0 && roi.DraggingPointIndex < roi.Points.Count)
                 {
-                    Point center = roi.Center;
-                    Point originalPos = InverseRotatePoint(pos, center, roi.Angle);
-                    roi.UpdatePoint(roi.DraggingPointIndex, originalPos);
-                    if (drawingService != null)
+                    // 🔧 修正：使用固定中心點進行座標轉換
+                    Point fixedCenter = roi.DragStartCenter;
+                    if (fixedCenter.X == 0 && fixedCenter.Y == 0)
                     {
-                        drawingService.UpdatePolygonVisual(roi);
+                        fixedCenter = roi.Center;
+                        roi.DragStartCenter = fixedCenter;
                     }
-                    PolygonRoiUpdated?.Invoke(roi);
+                    
+                    // 使用固定中心點進行座標轉換
+                    Point newOriginalPos = InverseRotatePoint(pos, fixedCenter, roi.RotationAngle);
+                    
+                    // 邊界檢查：檢查新位置旋轉後是否在邊界內
+                    Point newRotatedPos = RotatePoint(newOriginalPos, fixedCenter, roi.RotationAngle);
+                    bool inBounds = newRotatedPos.X >= minX && newRotatedPos.X <= maxX && 
+                                   newRotatedPos.Y >= minY && newRotatedPos.Y <= maxY;
+                    
+                    if (inBounds)
+                    {
+                        // 🔧 關鍵修正：只更新被拖曳的頂點，其他頂點座標完全不變
+                        roi.UpdatePoint(roi.DraggingPointIndex, newOriginalPos);
+                        if (drawingService != null)
+                        {
+                            // 🔧 修正：在拖曳過程中使用固定中心點進行繪製
+                            drawingService.UpdatePolygonVisual(roi, fixedCenter);
+                        }
+                        PolygonRoiUpdated?.Invoke(roi);
+                    }
                     return;
                 }
                 // 拖曳整顆多邊形
@@ -200,28 +229,53 @@ namespace HyImageShow.ImageShowWPF.Services
                     {
                         newPoints.Add((Point)(roi.DragStartPoints[i] + delta));
                     }
-                    roi.UpdatePointsBatch(newPoints);
-                    if (drawingService != null)
+                    
+                    // 🔧 改進：檢查旋轉後的整體多邊形是否都在Canvas內
+                    Point newCenter = CalculateCenter(newPoints);
+                    var rotatedNewPoints = newPoints.Select(p => RotatePoint(p, newCenter, roi.RotationAngle)).ToList();
+                    
+                    // 檢查所有旋轉後的頂點是否都在邊界內
+                    bool allPointsInBounds = rotatedNewPoints.All(p => 
+                        p.X >= minX && p.X <= maxX && p.Y >= minY && p.Y <= maxY);
+                    
+                    if (allPointsInBounds)
                     {
-                        drawingService.UpdatePolygonVisual(roi);
+                        roi.UpdatePointsBatch(newPoints);
+                        if (drawingService != null)
+                        {
+                            drawingService.UpdatePolygonVisual(roi);
+                        }
+                        PolygonRoiUpdated?.Invoke(roi);
                     }
-                    PolygonRoiUpdated?.Invoke(roi);
                     return;
                 }
                 // 拖曳旋轉點
                 if (roi.IsDraggingRotate)
                 {
+                    // 限制鼠標位置在Canvas內
+                    Point clampedPos = HyImageShow.ImageShowWPF.Models.CanvasBoundaryHelper.ClampPoint(pos, minX, minY, maxX, maxY);
+                    
                     Point center = roi.Center;
-                    Vector v = pos - center;
+                    Vector v = clampedPos - center;
                     double currentVectorAngle = Math.Atan2(v.Y, v.X) * 180 / Math.PI;
                     double delta = currentVectorAngle - roi.RotateStartVectorAngle;
-                    roi.RotationAngle = roi.RotateStartAngle + delta;
-                    roi.LastDragPos = pos;
-                    if (drawingService != null)
+                    double newAngle = roi.RotateStartAngle + delta;
+                    
+                    // 🔧 改進：檢查旋轉後整個多邊形是否超出邊界
+                    var rotatedPoints = roi.Points.Select(p => RotatePoint(p, center, newAngle)).ToList();
+                    bool allPointsInBounds = rotatedPoints.All(p => 
+                        p.X >= minX && p.X <= maxX && p.Y >= minY && p.Y <= maxY);
+                    
+                    if (allPointsInBounds)
                     {
-                        drawingService.UpdatePolygonVisual(roi);
+                        roi.RotationAngle = newAngle;
+                        roi.LastDragPos = clampedPos;
+                        if (drawingService != null)
+                        {
+                            drawingService.UpdatePolygonVisual(roi);
+                        }
+                        PolygonRoiUpdated?.Invoke(roi);
                     }
-                    PolygonRoiUpdated?.Invoke(roi);
                     return;
                 }
             }
@@ -241,6 +295,12 @@ namespace HyImageShow.ImageShowWPF.Services
                 roi.IsDraggingBody = false;
                 roi.DraggingPointIndex = -1;
                 roi.DragStartPoints = null;
+                
+                // 🔧 修正：拖曳結束後清理固定中心點，讓中心點自然重新計算
+                if (wasDraggingPoint)
+                {
+                    roi.DragStartCenter = new Point(0, 0);
+                }
 
                 if (wasDraggingPoint || wasDraggingRotate || wasDraggingBody)
                 {
@@ -260,6 +320,12 @@ namespace HyImageShow.ImageShowWPF.Services
                 currentPolygonRoi.IsDraggingBody = false;
                 currentPolygonRoi.DraggingPointIndex = -1;
                 currentPolygonRoi.DragStartPoints = null;
+                
+                // 🔧 修正：拖曳結束後清理固定中心點
+                if (wasDraggingPoint)
+                {
+                    currentPolygonRoi.DragStartCenter = new Point(0, 0);
+                }
 
                 if (wasDraggingPoint || wasDraggingRotate || wasDraggingBody)
                 {
@@ -401,6 +467,11 @@ namespace HyImageShow.ImageShowWPF.Services
             this.drawingService = drawingService;
         }
 
+        public override void RemoveRoi(PolygonRoiItem polygonRoi, Canvas canvas)
+        {
+            RemovePolygonRoi(polygonRoi, canvas);
+        }
+
         /// <summary>
         /// 處理滑鼠右鍵按下事件
         /// </summary>
@@ -429,6 +500,23 @@ namespace HyImageShow.ImageShowWPF.Services
                 // 重置當前多邊形ROI
                 currentPolygonRoi = null;
             }
+        }
+
+        /// <summary>
+        /// 計算點列表的中心點
+        /// </summary>
+        private Point CalculateCenter(List<Point> points)
+        {
+            if (points == null || points.Count == 0)
+                return new Point(0, 0);
+
+            double sumX = 0, sumY = 0;
+            foreach (var point in points)
+            {
+                sumX += point.X;
+                sumY += point.Y;
+            }
+            return new Point(sumX / points.Count, sumY / points.Count);
         }
 
         /// <summary>

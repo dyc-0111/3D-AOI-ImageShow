@@ -144,18 +144,27 @@ namespace HyImageShow.ImageShowWPF.Services
             }
             lastUpdateTime = now;
 
+            // 取得Canvas邊界
+            double minX = 0;
+            double minY = 0;
+            double maxX = canvas.ActualWidth;
+            double maxY = canvas.ActualHeight;
+
             if (isDraggingDot && draggingDotIndex >= 0 && draggingDotIndex < 3 && CurrentBezierArcRoi != null)
             {
+                // 限制鼠標位置在Canvas內
+                Point clampedPos = HyImageShow.ImageShowWPF.Models.CanvasBoundaryHelper.ClampPoint(pos, minX, minY, maxX, maxY);
+                
                 switch (draggingDotIndex)
                 {
                     case 0:
-                        CurrentBezierArcRoi.StartPoint = pos;
+                        CurrentBezierArcRoi.StartPoint = clampedPos;
                         break;
                     case 1:
-                        CurrentBezierArcRoi.EndPoint = pos;
+                        CurrentBezierArcRoi.EndPoint = clampedPos;
                         break;
                     case 2:
-                        CurrentBezierArcRoi.MiddlePoint = pos;
+                        CurrentBezierArcRoi.MiddlePoint = clampedPos;
                         break;
                 }
                 if (CurrentBezierArcRoi.IsCompleted)
@@ -176,16 +185,25 @@ namespace HyImageShow.ImageShowWPF.Services
             {
                 if (draggingDotIndex >= 0 && draggingDotIndex < 3 && CurrentBezierArcRoi != null)
                 {
+                    // 取得Canvas邊界
+                    double minX = 0;
+                    double minY = 0;
+                    double maxX = canvas.ActualWidth;
+                    double maxY = canvas.ActualHeight;
+                    
+                    // 限制鼠標位置在Canvas內
+                    Point clampedPos = HyImageShow.ImageShowWPF.Models.CanvasBoundaryHelper.ClampPoint(pos, minX, minY, maxX, maxY);
+                    
                     switch (draggingDotIndex)
                     {
                         case 0:
-                            CurrentBezierArcRoi.StartPoint = pos;
+                            CurrentBezierArcRoi.StartPoint = clampedPos;
                             break;
                         case 1:
-                            CurrentBezierArcRoi.EndPoint = pos;
+                            CurrentBezierArcRoi.EndPoint = clampedPos;
                             break;
                         case 2:
-                            CurrentBezierArcRoi.MiddlePoint = pos;
+                            CurrentBezierArcRoi.MiddlePoint = clampedPos;
                             break;
                     }
                     if (CurrentBezierArcRoi.IsCompleted)
@@ -357,6 +375,31 @@ namespace HyImageShow.ImageShowWPF.Services
                 CurrentBezierArcRoi = null;
             BezierArcRois.Remove(bezierArcRoi);
             BezierArcRoiRemoved?.Invoke(bezierArcRoi);
+        }
+
+        public override void RemoveRoi(BezierArcRoiItem bezierArcRoi, Canvas canvas)
+        {
+            if (bezierArcRoi == null || canvas == null) return;
+            
+            // 如果是當前繪製的貝茲弧，清除當前狀態
+            if (CurrentBezierArcRoi == bezierArcRoi)
+            {
+                CurrentBezierArcRoi = null;
+                clickCount = 0;
+            }
+            
+            // 從Canvas清除視覺元素
+            if (drawingService != null)
+            {
+                drawingService.ClearRois(canvas, new List<BezierArcRoiItem> { bezierArcRoi });
+            }
+            
+            // 從集合中移除
+            if (BezierArcRois.Remove(bezierArcRoi))
+            {
+                // 觸發移除事件
+                BezierArcRoiRemoved?.Invoke(bezierArcRoi);
+            }
         }
 
         public void RemoveAllBezierArcRois()

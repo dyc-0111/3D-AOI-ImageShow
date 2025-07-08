@@ -113,10 +113,16 @@ namespace HyImageShow.ImageShowWPF.Services
 
         public void HandleMouseMove(Point pos, Canvas canvas)
         {
+            HandleMouseMove(pos, canvas, 0, 0, canvas.ActualWidth, canvas.ActualHeight);
+        }
+
+        public void HandleMouseMove(Point pos, Canvas canvas, double minX, double minY, double maxX, double maxY)
+        {
             if (currentEllipseRoi != null && !currentEllipseRoi.IsCompleted)
             {
-                // 更新正在繪製的圓形ROI半徑
-                currentEllipseRoi.Radius = (pos - currentEllipseRoi.Center).Length;
+                // 更新正在繪製的圓形ROI半徑，並限制不超出Canvas
+                var clamp = HyImageShow.ImageShowWPF.Models.CanvasBoundaryHelper.ClampCircleStrict(currentEllipseRoi.Center, (pos - currentEllipseRoi.Center).Length, minX, minY, maxX, maxY);
+                currentEllipseRoi.Radius = clamp.radius;
                 // 修正：重新繪製所有橢圓ROI，包含當前正在繪製的橢圓
                 if (drawingService != null)
                 {
@@ -126,9 +132,13 @@ namespace HyImageShow.ImageShowWPF.Services
             }
             else if (currentEllipseRoi != null && currentEllipseRoi.IsDraggingCenter)
             {
-                // 拖曳圓心
+                // 拖曳圓心，限制圓心不超出Canvas（考慮半徑）
                 Vector delta = pos - currentEllipseRoi.LastDragPos;
-                currentEllipseRoi.CenterPoint = (Point)(currentEllipseRoi.Center + delta);
+                Point newCenter = (Point)(currentEllipseRoi.Center + delta);
+                double r = currentEllipseRoi.Radius;
+                var clamp = HyImageShow.ImageShowWPF.Models.CanvasBoundaryHelper.ClampCircleStrict(newCenter, currentEllipseRoi.Radius, minX, minY, maxX, maxY);
+                currentEllipseRoi.CenterPoint = clamp.center;
+                currentEllipseRoi.CenterPoint = clamp.center;
                 currentEllipseRoi.LastDragPos = pos;
                 // 新增：即時更新視覺元素
                 if (drawingService != null)
@@ -139,8 +149,10 @@ namespace HyImageShow.ImageShowWPF.Services
             }
             else if (currentEllipseRoi != null && currentEllipseRoi.IsDraggingRadius)
             {
-                // 拖曳半徑
-                currentEllipseRoi.Radius = (pos - currentEllipseRoi.Center).Length;
+                // 拖曳半徑，限制半徑不超出Canvas，並同時修正center（避免半徑變大時圓心已經貼邊）
+                var clamp = HyImageShow.ImageShowWPF.Models.CanvasBoundaryHelper.ClampCircleStrict(currentEllipseRoi.Center, (pos - currentEllipseRoi.Center).Length, minX, minY, maxX, maxY);
+                currentEllipseRoi.CenterPoint = clamp.center;
+                currentEllipseRoi.Radius = clamp.radius;
                 // 新增：即時更新視覺元素
                 if (drawingService != null)
                 {
@@ -312,6 +324,41 @@ namespace HyImageShow.ImageShowWPF.Services
             }
         }
 
+        public override void RemoveRoi(EllipseRoiItem ellipseRoi, Canvas canvas)
+        {
+            if (ellipseRois.Contains(ellipseRoi))
+            {
+                // 安全移除UI元素
+                if (ellipseRoi.Ellipse != null)
+                {
+                    if (canvas.Children.Contains(ellipseRoi.Ellipse))
+                        canvas.Children.Remove(ellipseRoi.Ellipse);
+                    ellipseRoi.Ellipse = null;
+                }
+                if (ellipseRoi.CenterDot != null)
+                {
+                    if (canvas.Children.Contains(ellipseRoi.CenterDot))
+                        canvas.Children.Remove(ellipseRoi.CenterDot);
+                    ellipseRoi.CenterDot = null;
+                }
+                if (ellipseRoi.RadiusDot != null)
+                {
+                    if (canvas.Children.Contains(ellipseRoi.RadiusDot))
+                        canvas.Children.Remove(ellipseRoi.RadiusDot);
+                    ellipseRoi.RadiusDot = null;
+                }
+                if (ellipseRoi.LabelBorder != null)
+                {
+                    if (canvas.Children.Contains(ellipseRoi.LabelBorder))
+                        canvas.Children.Remove(ellipseRoi.LabelBorder);
+                    ellipseRoi.LabelBorder = null;
+                }
+
+                ellipseRois.Remove(ellipseRoi);
+                EllipseRoiRemoved?.Invoke(ellipseRoi);
+            }
+        }
+
         public void UpdateVisualElements(Canvas canvas)
         {
             if (drawingService != null)
@@ -394,5 +441,6 @@ namespace HyImageShow.ImageShowWPF.Services
             }
             return null;
         }
+
     }
 } 

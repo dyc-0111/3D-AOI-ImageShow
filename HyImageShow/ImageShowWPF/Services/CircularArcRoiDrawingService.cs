@@ -115,6 +115,26 @@ namespace HyImageShow.ImageShowWPF.Services
             }
         }
 
+        public override void ClearRois(Canvas canvas, IEnumerable<CircularArcRoiItem> rois)
+        {
+            if (canvas == null) return;
+            foreach (var roi in rois.ToList())
+            {
+                if (roi.Path != null && canvas.Children.Contains(roi.Path))
+                    canvas.Children.Remove(roi.Path);
+                foreach (var dot in roi.ControlDots ?? new Ellipse[0])
+                {
+                    if (dot != null && canvas.Children.Contains(dot))
+                        canvas.Children.Remove(dot);
+                }
+                if (roi.LabelBorder != null && canvas.Children.Contains(roi.LabelBorder))
+                    canvas.Children.Remove(roi.LabelBorder);
+                roi.Path = null;
+                roi.LabelBorder = null;
+                roi.ControlDots = new Ellipse[3];
+            }
+        }
+
         public void DrawCircularArcRoi(Canvas canvas, CircularArcRoiItem circularArcRoi, bool showLabels)
         {
             if (circularArcRoi == null || !circularArcRoi.IsCompleted) return;

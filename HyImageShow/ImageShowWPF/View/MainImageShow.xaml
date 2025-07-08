@@ -8,10 +8,12 @@
              xmlns:vm="clr-namespace:HyImageShow.ImageShowWPF.ViewModels"
              xmlns:controls="clr-namespace:HyImageShow.ImageShowWPF.View.Controls"
              xmlns:roiCards="clr-namespace:HyImageShow.ImageShowWPF.View.RoiCards"
+             xmlns:local="clr-namespace:HyImageShow.ImageShowWPF.View.Local"
              mc:Ignorable="d"
              d:DesignHeight="1080"
              d:DesignWidth="1920"
-             d:DataContext="{d:DesignInstance Type=vm:ImageShowViewModel, IsDesignTimeCreatable=False}">
+             d:DataContext="{d:DesignInstance Type=vm:ImageShowViewModel, IsDesignTimeCreatable=False}"
+             Focusable="True">
     <UserControl.Resources>
         <!-- 布林值轉換器 -->
         <view:BoolToBackgroundConverter x:Key="BoolToBackgroundConverter" />
@@ -52,20 +54,48 @@
             CircularArcTemplate="{StaticResource CircularArcRoiCardTemplate}"
             PointTemplate="{StaticResource PointRoiCardTemplate}" />
         
+        <local:RoiPanelPopupOffsetConverter x:Key="RoiPanelPopupOffsetConverter"/>
+        <local:RoiPanelPlacementConverter x:Key="RoiPanelPlacementConverter"/>
+        <local:ToolbarButtonLeftConverter x:Key="ToolbarButtonLeftConverter"/>
+        <local:ToolbarButtonTopConverter x:Key="ToolbarButtonTopConverter"/>
+        <local:RoiButtonLeftConverter x:Key="RoiButtonLeftConverter"/>
+        
+        <Storyboard x:Key="ExpandRoiPanel">
+            <local:GridLengthAnimation Storyboard.TargetName="RoiColumn"
+                                      Storyboard.TargetProperty="Width"
+                                      From="0" To="300" Duration="0:0:0.3"/>
+        </Storyboard>
+        <Storyboard x:Key="CollapseRoiPanel">
+            <local:GridLengthAnimation Storyboard.TargetName="RoiColumn"
+                                      Storyboard.TargetProperty="Width"
+                                      From="300" To="0" Duration="0:0:0.3"/>
+        </Storyboard>
+        <Storyboard x:Key="ExpandToolbar">
+            <local:GridLengthAnimation Storyboard.TargetName="ToolbarRow"
+                                      Storyboard.TargetProperty="Height"
+                                      From="0" To="60" Duration="0:0:0.3"/>
+        </Storyboard>
+        <Storyboard x:Key="CollapseToolbar">
+            <local:GridLengthAnimation Storyboard.TargetName="ToolbarRow"
+                                      Storyboard.TargetProperty="Height"
+                                      From="60" To="0" Duration="0:0:0.3"/>
+        </Storyboard>
     </UserControl.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
+            <RowDefinition x:Name="ToolbarRow" Height="60" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
         <!-- 工具列 -->
-        <Border Grid.Row="0"
+        <Border x:Name="ToolbarPanel" Grid.Row="0" MinHeight="60"
                 Background="#f8f9fa"
                 BorderBrush="#e9ecef"
                 BorderThickness="0,0,0,1"
-                Padding="16,12">
+                Padding="16,12"
+                Margin="0"
+                Visibility="{Binding IsToolbarVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
             <StackPanel Orientation="Horizontal"
                         HorizontalAlignment="Left">
                 
@@ -163,7 +193,8 @@
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="300" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition x:Name="RoiColumn" Width="300" />
             </Grid.ColumnDefinitions>
 
             <!-- 圖片顯示區域 -->
@@ -171,26 +202,27 @@
                     Background="LightGray"
                     Margin="8">
                 <Grid Name="MainCanvasGrid" Background="#D3D3D3">
-                    <ScrollViewer x:Name="MainScrollViewer"
-                                  HorizontalScrollBarVisibility="Auto"
-                                  VerticalScrollBarVisibility="Auto"
-                                  ClipToBounds="False">
-                        <Canvas x:Name="MainCanvas"
-                                Background="Transparent"
-                                ClipToBounds="False">
-                            <Canvas.RenderTransform>
+                    <Viewbox x:Name="ImageContainer" Stretch="Uniform">
+                        <Grid x:Name="ImageViewGrid" RenderTransformOrigin="0.5,0.5">
+                            <Grid.RenderTransform>
                                 <TransformGroup>
                                     <ScaleTransform x:Name="MainCanvasScaleTransform" ScaleX="1" ScaleY="1" />
                                     <TranslateTransform x:Name="MainCanvasTranslateTransform" />
                                 </TransformGroup>
-                            </Canvas.RenderTransform>
-                            <Image Source="{Binding ImageSource}"
-                                   Stretch="None"
-                                   Canvas.Left="0"
-                                   Canvas.Top="0"
+                            </Grid.RenderTransform>
+                            
+                            <Image x:Name="MainImage"
+                                   Source="{Binding ImageSource}"
                                    RenderOptions.BitmapScalingMode="HighQuality" />
-                        </Canvas>
-                    </ScrollViewer>
+                            
+                            <Canvas x:Name="MainCanvas"
+                                    Background="Transparent"
+                                    Panel.ZIndex="10"
+                                    Width="{Binding ElementName=MainImage, Path=ActualWidth}"
+                                    Height="{Binding ElementName=MainImage, Path=ActualHeight}" />
+                        </Grid>
+                    </Viewbox>
+                    
                     <!-- 十字線/ROI等Overlay層 -->
                     <Canvas x:Name="OverlayCanvas"
                             IsHitTestVisible="False" />
@@ -198,62 +230,258 @@
             </Border>
             
             <!-- ROI清單面板 -->
-            <Border Grid.Column="1"
+            <Border x:Name="RoiPanel" Grid.Column="2"
                     Background="#f8f9fa"
                     BorderBrush="#e9ecef"
                     BorderThickness="1,0,0,0"
-                    Margin="0,8,8,8">
-                <DockPanel>
-                    <TextBlock DockPanel.Dock="Top"
-                               Text="ROI 清單"
-                               FontWeight="Bold"
-                               FontSize="16"
-                               Margin="16,16,16,8"
-                               Foreground="#495057" />
-                    
-                    <ScrollViewer>
-                        <ListView x:Name="RoiListView"
-                                  ItemsSource="{Binding RoiItems}"
-                                  SelectedItem="{Binding SelectedRoiItem}"
-                                  Background="Transparent"
-                                  BorderThickness="0"
-                                  Margin="8"
-                                  HorizontalContentAlignment="Stretch"
-                                  VirtualizingStackPanel.IsVirtualizing="False">
-                            <ListView.ItemContainerStyle>
-                                <Style TargetType="ListViewItem">
-                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                                    <Setter Property="Margin" Value="0,8,0,8"/>
-                                    <Setter Property="Background" Value="Transparent"/>
-                                    <Setter Property="BorderBrush" Value="#90caf9"/>
-                                    <Setter Property="BorderThickness" Value="0"/>
-                                    <Setter Property="SnapsToDevicePixels" Value="True"/>
+                    Margin="0,8,8,8"
+                    Visibility="{Binding IsRoiPanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Grid>
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top"
+                                   Text="ROI 清單"
+                                   FontWeight="Bold"
+                                   FontSize="16"
+                                   Margin="16,16,16,8"
+                                   Foreground="#495057" />
+                        <ScrollViewer>
+                            <ListView x:Name="RoiListView"
+                                      ItemsSource="{Binding RoiItems}"
+                                      SelectedItem="{Binding SelectedRoiItem}"
+                                      Background="Transparent"
+                                      BorderThickness="0"
+                                      Margin="8"
+                                      HorizontalContentAlignment="Stretch"
+                                      VirtualizingStackPanel.IsVirtualizing="False"
+                                      Focusable="True">
+                                <ListView.ItemContainerStyle>
+                                    <Style TargetType="ListViewItem">
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                        <Setter Property="Margin" Value="0,8,0,8"/>
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="BorderBrush" Value="#90caf9"/>
+                                        <Setter Property="BorderThickness" Value="0"/>
+                                        <Setter Property="SnapsToDevicePixels" Value="True"/>
+                                        <Setter Property="Effect">
+                                            <Setter.Value>
+                                                <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.08"/>
+                                            </Setter.Value>
+                                        </Setter>
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="#f5faff"/>
+                                            </Trigger>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter Property="Background" Value="#e3f2fd"/>
+                                                <Setter Property="BorderBrush" Value="#1976d2"/>
+                                                <Setter Property="BorderThickness" Value="2"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ListView.ItemContainerStyle>
+                                <ListView.ItemTemplate>
+                                    <DataTemplate>
+                                        <ContentControl Content="{Binding}" ContentTemplateSelector="{StaticResource RoiCardTemplateSelector}" />
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Grid>
+            </Border>
+
+            <!-- Canvas 浮動收合/展開按鈕 -->
+            <Canvas>
+                <Button x:Name="FloatingButton"
+                        Width="40" Height="80"
+                        Canvas.Left="{Binding ElementName=MainCanvasGrid, Path=ActualWidth, Converter={StaticResource RoiButtonLeftConverter}}"
+                        Canvas.Top="{Binding ElementName=MainCanvasGrid, Path=ActualHeight, Converter={StaticResource RoiPanelPopupOffsetConverter}}"
+                        VerticalAlignment="Center"
+                        Command="{Binding ToggleRoiPanelCommand}"
+                        Background="White"
+                        BorderBrush="#DDD"
+                        BorderThickness="1"
+                        ToolTip="收合/展開">
+                    <Button.Effect>
+                        <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.18"/>
+                    </Button.Effect>
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Background" Value="White"/>
+                            <Setter Property="BorderBrush" Value="#DDD"/>
+                            <Setter Property="BorderThickness" Value="1"/>
+                            <Setter Property="Effect">
+                                <Setter.Value>
+                                    <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.18"/>
+                                </Setter.Value>
+                            </Setter>
+                            <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+                            <Setter Property="RenderTransform">
+                                <Setter.Value>
+                                    <ScaleTransform ScaleX="1" ScaleY="1"/>
+                                </Setter.Value>
+                            </Setter>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                CornerRadius="20"
+                                                SnapsToDevicePixels="True">
+                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#E3F2FD"/>
+                                    <Setter Property="BorderBrush" Value="#1976d2"/>
                                     <Setter Property="Effect">
                                         <Setter.Value>
-                                            <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.08"/>
+                                            <DropShadowEffect BlurRadius="16" ShadowDepth="2" Opacity="0.32"/>
                                         </Setter.Value>
                                     </Setter>
-                                    <Style.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="#f5faff"/>
-                                        </Trigger>
-                                        <Trigger Property="IsSelected" Value="True">
-                                            <Setter Property="Background" Value="#e3f2fd"/>
-                                            <Setter Property="BorderBrush" Value="#1976d2"/>
-                                            <Setter Property="BorderThickness" Value="2"/>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </ListView.ItemContainerStyle>
-                            <ListView.ItemTemplate>
-                                <DataTemplate>
-                                    <ContentControl Content="{Binding}" ContentTemplateSelector="{StaticResource RoiCardTemplateSelector}" />
-                                </DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
-                    </ScrollViewer>
-                </DockPanel>
-            </Border>
+                                    <Setter Property="RenderTransform">
+                                        <Setter.Value>
+                                            <ScaleTransform ScaleX="1.08" ScaleY="1.08"/>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                    <ContentControl>
+                        <ContentControl.Style>
+                            <Style TargetType="ContentControl">
+                                <Setter Property="Content">
+                                    <Setter.Value>
+                                        <!-- 展開時向右箭頭 -->
+                                        <Path Data="M9,6L15,12L9,18"
+                                              Stroke="#1976d2"
+                                              StrokeThickness="2"
+                                              StrokeLineJoin="Round"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                                    </Setter.Value>
+                                </Setter>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsRoiPanelVisible}" Value="False">
+                                        <Setter Property="Content">
+                                            <Setter.Value>
+                                                <!-- 收合時向左箭頭 -->
+                                                <Path Data="M15,6L9,12L15,18"
+                                                      Stroke="#1976d2"
+                                                      StrokeThickness="2"
+                                                      StrokeLineJoin="Round"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"/>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ContentControl.Style>
+                    </ContentControl>
+                </Button>
+            </Canvas>
+
+            <!-- Canvas 浮動工具列收合/展開按鈕 -->
+            <Canvas>
+                <Button x:Name="ToolbarFloatingButton"
+                        Width="80" Height="40"
+                        Canvas.Left="{Binding ElementName=MainCanvasGrid, Path=ActualWidth, Converter={StaticResource ToolbarButtonLeftConverter}}"
+                        Canvas.Top="{Binding ElementName=ToolbarPanel, Path=ActualHeight, Converter={StaticResource ToolbarButtonTopConverter}}"
+                        Command="{Binding ToggleToolbarCommand}"
+                        Background="White"
+                        BorderBrush="#DDD"
+                        BorderThickness="1"
+                        ToolTip="收合/展開工具列">
+                    <Button.Effect>
+                        <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.18"/>
+                    </Button.Effect>
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Background" Value="White"/>
+                            <Setter Property="BorderBrush" Value="#DDD"/>
+                            <Setter Property="BorderThickness" Value="1"/>
+                            <Setter Property="Effect">
+                                <Setter.Value>
+                                    <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.18"/>
+                                </Setter.Value>
+                            </Setter>
+                            <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+                            <Setter Property="RenderTransform">
+                                <Setter.Value>
+                                    <ScaleTransform ScaleX="1" ScaleY="1"/>
+                                </Setter.Value>
+                            </Setter>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                CornerRadius="20"
+                                                SnapsToDevicePixels="True">
+                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#E3F2FD"/>
+                                    <Setter Property="BorderBrush" Value="#1976d2"/>
+                                    <Setter Property="Effect">
+                                        <Setter.Value>
+                                            <DropShadowEffect BlurRadius="16" ShadowDepth="2" Opacity="0.32"/>
+                                        </Setter.Value>
+                                    </Setter>
+                                    <Setter Property="RenderTransform">
+                                        <Setter.Value>
+                                            <ScaleTransform ScaleX="1.08" ScaleY="1.08"/>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                    <ContentControl>
+                        <ContentControl.Style>
+                            <Style TargetType="ContentControl">
+                                <Setter Property="Content">
+                                    <Setter.Value>
+                                        <!-- 展開時向上箭頭 -->
+                                        <Path Data="M6,15L12,9L18,15"
+                                              Stroke="#1976d2"
+                                              StrokeThickness="2"
+                                              StrokeLineJoin="Round"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                                    </Setter.Value>
+                                </Setter>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsToolbarVisible}" Value="False">
+                                        <Setter Property="Content">
+                                            <Setter.Value>
+                                                <!-- 收合時向下箭頭 -->
+                                                <Path Data="M6,9L12,15L18,9"
+                                                      Stroke="#1976d2"
+                                                      StrokeThickness="2"
+                                                      StrokeLineJoin="Round"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"/>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ContentControl.Style>
+                    </ContentControl>
+                </Button>
+            </Canvas>
         </Grid>
     </Grid>
 </UserControl>

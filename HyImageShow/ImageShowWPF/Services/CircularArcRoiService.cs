@@ -194,16 +194,25 @@ namespace HyImageShow.ImageShowWPF.Services
 
             if (isDraggingDot && draggingDotIndex >= 0 && draggingDotIndex < 3 && currentCircularArcRoi != null)
             {
+                // 取得Canvas邊界
+                double minX = 0;
+                double minY = 0;
+                double maxX = canvas.ActualWidth;
+                double maxY = canvas.ActualHeight;
+                
+                // 限制鼠標位置在Canvas內
+                Point clampedPos = HyImageShow.ImageShowWPF.Models.CanvasBoundaryHelper.ClampPoint(pos, minX, minY, maxX, maxY);
+                
                 switch (draggingDotIndex)
                 {
                     case 0:
-                        currentCircularArcRoi.StartPoint = pos;
+                        currentCircularArcRoi.StartPoint = clampedPos;
                         break;
                     case 1:
-                        currentCircularArcRoi.EndPoint = pos;
+                        currentCircularArcRoi.EndPoint = clampedPos;
                         break;
                     case 2:
-                        currentCircularArcRoi.UserMidPoint = pos;
+                        currentCircularArcRoi.UserMidPoint = clampedPos;
                         break;
                 }
                 
@@ -227,16 +236,25 @@ namespace HyImageShow.ImageShowWPF.Services
             {
                 if (draggingDotIndex >= 0 && draggingDotIndex < 3 && currentCircularArcRoi != null)
                 {
+                    // 取得Canvas邊界
+                    double minX = 0;
+                    double minY = 0;
+                    double maxX = canvas.ActualWidth;
+                    double maxY = canvas.ActualHeight;
+                    
+                    // 限制鼠標位置在Canvas內
+                    Point clampedPos = HyImageShow.ImageShowWPF.Models.CanvasBoundaryHelper.ClampPoint(pos, minX, minY, maxX, maxY);
+                    
                     switch (draggingDotIndex)
                     {
                         case 0:
-                            currentCircularArcRoi.StartPoint = pos;
+                            currentCircularArcRoi.StartPoint = clampedPos;
                             break;
                         case 1:
-                            currentCircularArcRoi.EndPoint = pos;
+                            currentCircularArcRoi.EndPoint = clampedPos;
                             break;
                         case 2:
-                            currentCircularArcRoi.UserMidPoint = pos;
+                            currentCircularArcRoi.UserMidPoint = clampedPos;
                             break;
                     }
                     
@@ -266,11 +284,31 @@ namespace HyImageShow.ImageShowWPF.Services
 
         public void RemoveCircularArcRoi(CircularArcRoiItem circularArcRoi, Canvas canvas)
         {
-            if (circularArcRois.Contains(circularArcRoi))
+            if (circularArcRoi == null || canvas == null) return;
+            
+            // 如果是當前繪製的圓弧，清除當前狀態
+            if (currentCircularArcRoi == circularArcRoi)
             {
-                circularArcRois.Remove(circularArcRoi);
+                currentCircularArcRoi = null;
+                clickCount = 0;
+            }
+            
+            // 從Canvas清除視覺元素
+            if (drawingService != null)
+            {
+                drawingService.ClearRois(canvas, new List<CircularArcRoiItem> { circularArcRoi });
+            }
+            
+            // 從集合中移除
+            if (circularArcRois.Remove(circularArcRoi))
+            {
                 CircularArcRoiRemoved?.Invoke(circularArcRoi);
             }
+        }
+
+        public override void RemoveRoi(CircularArcRoiItem circularArcRoi, Canvas canvas)
+        {
+            RemoveCircularArcRoi(circularArcRoi, canvas);
         }
 
         public void RemoveAllCircularArcRois(Canvas canvas)

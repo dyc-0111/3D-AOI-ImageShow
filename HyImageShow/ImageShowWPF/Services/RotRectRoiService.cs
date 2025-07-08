@@ -53,6 +53,7 @@ namespace HyImageShow.ImageShowWPF.Services
 
         public event Action<RectRoiItem> RotRectRoiCompleted;
         public event Action<RectRoiItem> RotRectRoiUpdated;
+        public event Action<RectRoiItem> RotRectRoiRemoved;
         public event Action RotRectRoisCleared;
 
         /// <summary>
@@ -181,11 +182,16 @@ namespace HyImageShow.ImageShowWPF.Services
 
         public void HandleMouseMove(Point pos, Canvas canvas)
         {
+            double minX = 0, minY = 0;
+            double maxX = canvas.ActualWidth;
+            double maxY = canvas.ActualHeight;
             if (isDrawingRect && rectPreviewItem != null)
             {
                 double width = Math.Abs(pos.X - rectStartPoint.X);
                 double height = Math.Abs(pos.Y - rectStartPoint.Y);
                 Point center = new Point((rectStartPoint.X + pos.X) / 2, (rectStartPoint.Y + pos.Y) / 2);
+                // 限制中心點在Canvas內
+                center = HyImageShow.ImageShowWPF.Models.CanvasBoundaryHelper.ClampPoint(center, minX, minY, maxX, maxY);
                 rectPreviewItem.CenterPoint = center;
                 rectPreviewItem.Width = Math.Max(width, 1);
                 rectPreviewItem.Height = Math.Max(height, 1);
@@ -202,7 +208,25 @@ namespace HyImageShow.ImageShowWPF.Services
                 if (rotRectItem.IsDraggingCenter)
                 {
                     Vector delta = pos - rotRectItem.LastDragPos;
-                    rotRectItem.CenterPoint = (Point)(rotRectItem.Center + delta);
+                    Point newCenter = (Point)(rotRectItem.Center + delta);
+                    // 限制中心點在Canvas內（考慮旋轉後四個角都要在內部）
+                    double hw = rotRectItem.Width / 2, hh = rotRectItem.Height / 2;
+                    double rad = rotRectItem.Angle * Math.PI / 180.0;
+                    double[] dx = { -hw, hw, hw, -hw };
+                    double[] dy = { -hh, -hh, hh, hh };
+                    bool isInside = true;
+                    for (int i = 0; i < 4; i++)
+                    {
+                        double x = newCenter.X + dx[i] * Math.Cos(rad) - dy[i] * Math.Sin(rad);
+                        double y = newCenter.Y + dx[i] * Math.Sin(rad) + dy[i] * Math.Cos(rad);
+                        if (x < minX || x > maxX || y < minY || y > maxY)
+                        {
+                            isInside = false;
+                            break;
+                        }
+                    }
+                    if (isInside)
+                        rotRectItem.CenterPoint = newCenter;
                     rotRectItem.LastDragPos = pos;
                     // 更新視覺效果
                     if (drawingService != null)
@@ -224,6 +248,8 @@ namespace HyImageShow.ImageShowWPF.Services
                     corners[3] = rotRectItem.Center + new Vector(-hw * cosA - hh * sinA, -hw * sinA + hh * cosA);
                     Point opp = corners[oppIdx];
                     Point mouse = pos;
+                    // 限制mouse點在Canvas內
+                    mouse = HyImageShow.ImageShowWPF.Models.CanvasBoundaryHelper.ClampPoint(mouse, minX, minY, maxX, maxY);
                     rotRectItem.CenterPoint = new Point((mouse.X + opp.X) / 2, (mouse.Y + opp.Y) / 2);
                     Vector v = mouse - rotRectItem.Center;
                     double localX = v.X * cosA + v.Y * sinA;
@@ -302,6 +328,37 @@ namespace HyImageShow.ImageShowWPF.Services
             }
         }
 
+        public override void RemoveRoi(RectRoiItem rectRoi, Canvas canvas)
+        {
+            if (rectRoi == null || canvas == null) return;
+            
+            // 如果是當前繪製的矩形，清除當前狀態
+            if (CurrentRotRectRoi == rectRoi)
+            {
+                CurrentRotRectRoi = null;
+                IsDrawingRotRectRoi = false;
+            }
+            
+            // 如果是預覽矩形，清除預覽狀態
+            if (rectPreviewItem == rectRoi)
+            {
+                rectPreviewItem = null;
+                isDrawingRect = false;
+            }
+            
+            // 從Canvas清除視覺元素
+            if (drawingService != null)
+            {
+                drawingService.ClearRois(canvas, new List<RectRoiItem> { rectRoi });
+            }
+            
+            // 從集合中移除
+            if (RotRectRois.Remove(rectRoi))
+            {
+                // 觸發移除事件
+                RotRectRoiRemoved?.Invoke(rectRoi);
+            }
+        }
         public void RemoveAllRotRectRois(Canvas canvas)
         {
             // 清除所有矩形ROI

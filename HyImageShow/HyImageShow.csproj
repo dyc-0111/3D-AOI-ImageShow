@@ -114,6 +114,7 @@
     <Compile Include="ImageShowWPF\Data\RoiData.cs" />
     <Compile Include="ImageShowWPF\Data\RoiDataConverter.cs" />
     <Compile Include="ImageShowWPF\Models\BaseItem.cs" />
+    <Compile Include="ImageShowWPF\Models\CanvasBoundaryHelper.cs" />
     <Compile Include="ImageShowWPF\Models\CrossLineItem.cs" />
     <Compile Include="ImageShowWPF\Models\PointItem.cs" />
     <Compile Include="ImageShowWPF\Models\ZIndexManager.cs" />
@@ -128,6 +129,13 @@
     <Compile Include="ImageShowWPF\View\Controls\ToolButton.xaml.cs">
       <DependentUpon>ToolButton.xaml</DependentUpon>
     </Compile>
+    <Compile Include="ImageShowWPF\View\Local\CanvasGridToButtonLeftConverter.cs" />
+    <Compile Include="ImageShowWPF\View\Local\GridLengthAnimation.cs" />
+    <Compile Include="ImageShowWPF\View\Local\RoiButtonLeftConverter.cs" />
+    <Compile Include="ImageShowWPF\View\Local\RoiPanelPlacementConverter.cs" />
+    <Compile Include="ImageShowWPF\View\Local\RoiPanelPopupOffsetConverter.cs" />
+    <Compile Include="ImageShowWPF\View\Local\ToolbarButtonLeftConverter.cs" />
+    <Compile Include="ImageShowWPF\View\Local\ToolbarButtonTopConverter.cs" />
     <Compile Include="ImageShowWPF\View\RoiCards\BezierArcRoiCard.xaml.cs">
       <DependentUpon>BezierArcRoiCard.xaml</DependentUpon>
     </Compile>

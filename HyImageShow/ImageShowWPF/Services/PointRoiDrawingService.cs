@@ -68,6 +68,15 @@ namespace HyImageShow.ImageShowWPF.Services
             }
         }
 
+        public override void ClearRois(Canvas canvas, IEnumerable<PointItem> rois)
+        {
+            if (canvas == null) return;
+            foreach (var roi in rois)
+            {
+                RemovePointVisual(roi, canvas);
+            }
+        }
+
         public override void UpdateRoiVisual(PointItem roi)
         {
             if (roi.EllipseElement is Ellipse ellipse)

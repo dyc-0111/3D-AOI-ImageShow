@@ -4,16 +4,16 @@
 winexe
 C#
 .cs
-D:\@Code\新增資料夾\3D-AOI-ImageShow-DYC - AlwaysKeepUpdateVersion\HyImageShow\obj\Debug\
+D:\@Code\新增資料夾\3D-AOI-ImageShow-DYC - Delete\HyImageShow\obj\Debug\
 HyImageShow
 none
 false
 DEBUG;TRACE
-D:\@Code\新增資料夾\3D-AOI-ImageShow-DYC - AlwaysKeepUpdateVersion\HyImageShow\App.xaml
+D:\@Code\新增資料夾\3D-AOI-ImageShow-DYC - Delete\HyImageShow\App.xaml
 11-791947081
 
-56-1071508914
-18-1778478715
+64544995887
+18-1293260041
 ImageShowWPF\View\Controls\ToolButton.xaml;ImageShowWPF\View\RoiCards\BezierArcRoiCard.xaml;ImageShowWPF\View\RoiCards\CircularArcRoiCard.xaml;ImageShowWPF\View\RoiCards\EllipseRoiCard.xaml;ImageShowWPF\View\RoiCards\LineRoiCard.xaml;ImageShowWPF\View\RoiCards\PointRoiCard.xaml;ImageShowWPF\View\RoiCards\PolygonRoiCard.xaml;ImageShowWPF\View\RoiCards\RotRectRoiCard.xaml;ImageShowWPF\View\RoiCards\RulerRoiCard.xaml;MainWindow.xaml;ImageShowWPF\View\MainImageShow.xaml;
 
 False

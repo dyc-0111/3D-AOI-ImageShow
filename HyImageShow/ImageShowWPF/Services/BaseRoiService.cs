@@ -36,6 +36,10 @@ namespace HyImageShow.ImageShowWPF.Services
                 RoiRemoved?.Invoke(roi);
         }
 
+        public virtual void RemoveRoi(TModel roi, Canvas canvas)
+        {
+        }
+
         public virtual void ClearRois()
         {
             roiItems.Clear();

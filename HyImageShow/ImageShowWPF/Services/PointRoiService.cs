@@ -1,5 +1,6 @@
 using HyImageShow.ImageShowWPF.Models;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
@@ -24,6 +25,7 @@ namespace HyImageShow.ImageShowWPF.Services
 
         public event Action<PointItem> PointCompleted;
         public event Action<PointItem> PointUpdated;
+        public event Action<PointItem> PointRemoved;
         public event Action PointsCleared;
 
         public void SetDrawingService(PointRoiDrawingService service)
@@ -96,13 +98,22 @@ namespace HyImageShow.ImageShowWPF.Services
 
         public void HandleMouseMove(Point pos, Canvas canvas)
         {
+            // 取得Canvas邊界
+            double minX = 0;
+            double minY = 0;
+            double maxX = canvas.ActualWidth;
+            double maxY = canvas.ActualHeight;
+
             foreach (var pt in Points)
             {
                 if (pt.Selected && !pt.IsCompleted)
                 {
-                    Vector delta = pos - pt.LastDragPos;
+                    // 使用 CanvasBoundaryHelper 限制點的位置
+                    Point clampedPos = HyImageShow.ImageShowWPF.Models.CanvasBoundaryHelper.ClampPoint(pos, minX, minY, maxX, maxY);
+
+                    Vector delta = clampedPos - pt.LastDragPos;
                     pt.Position = pt.Position + delta;
-                    pt.LastDragPos = pos;
+                    pt.LastDragPos = clampedPos;
                     drawingService?.UpdateRoiVisual(pt);
                     PointUpdated?.Invoke(pt);
                 }
@@ -124,6 +135,32 @@ namespace HyImageShow.ImageShowWPF.Services
             StopAnimationScaling();
         }
 
+        public override void RemoveRoi(PointItem pointRoi, Canvas canvas)
+        {
+            if (pointRoi == null || canvas == null) return;
+
+            // 如果是當前繪製的點，清除當前狀態
+            if (CurrentPoint == pointRoi)
+            {
+                CurrentPoint = null;
+                IsDrawingPoint = false;
+            }
+
+            // 從Canvas清除視覺元素
+            if (drawingService != null)
+            {
+                drawingService.ClearRois(canvas, new List<PointItem> { pointRoi });
+            }
+
+            // 從集合中移除
+            if (Points.Remove(pointRoi))
+            {
+                // 觸發移除事件
+                PointRemoved?.Invoke(pointRoi);
+            }
+        }
+
+
         public void RemoveAllPoints(Canvas canvas)
         {
             Points.Clear();
@@ -142,4 +179,4 @@ namespace HyImageShow.ImageShowWPF.Services
             return hitItems.OrderByDescending(i => i.ZIndex).FirstOrDefault();
         }
     }
-} 
+}

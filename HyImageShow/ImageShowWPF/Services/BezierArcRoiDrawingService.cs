@@ -269,6 +269,28 @@ namespace HyImageShow.ImageShowWPF.Services
             }
         }
 
+        public override void ClearRois(Canvas canvas, IEnumerable<BezierArcRoiItem> rois)
+        {
+            if (canvas == null) return;
+            foreach (var roi in rois.ToList())
+            {
+                if (roi.Path != null && canvas.Children.Contains(roi.Path))
+                    canvas.Children.Remove(roi.Path);
+                foreach (var dot in roi.ControlDots)
+                {
+                    if (dot != null && canvas.Children.Contains(dot))
+                        canvas.Children.Remove(dot);
+                }
+                if (roi.LabelBorder != null && canvas.Children.Contains(roi.LabelBorder))
+                    canvas.Children.Remove(roi.LabelBorder);
+                roi.Path = null;
+                roi.LabelBorder = null;
+                for (int i = 0; i < roi.ControlDots.Length; i++)
+                    roi.ControlDots[i] = null;
+            }
+        }
+
+
         private Point GetQuadraticBezierPoint(Point p0, Point p1, Point p2, double t)
         {
             double x = (1 - t) * (1 - t) * p0.X + 2 * (1 - t) * t * p1.X + t * t * p2.X;

@@ -45,6 +45,8 @@ namespace HyImageShow.ImageShowWPF.ViewModels
 
         private ImageSource _imageSource;
         private bool _showLabels = true;
+        private bool _isRoiPanelVisible = true;
+        private bool _isToolbarVisible = true;
         
         // Transform Actions - 用於間接控制 View 層的 Transform
         private Action<double> _zoomAction;
@@ -172,6 +174,18 @@ namespace HyImageShow.ImageShowWPF.ViewModels
             }
         }
 
+        public bool IsRoiPanelVisible
+        {
+            get => _isRoiPanelVisible;
+            set { _isRoiPanelVisible = value; OnPropertyChanged(nameof(IsRoiPanelVisible)); }
+        }
+
+        public bool IsToolbarVisible
+        {
+            get => _isToolbarVisible;
+            set { _isToolbarVisible = value; OnPropertyChanged(nameof(IsToolbarVisible)); }
+        }
+
         // 工具按鈕的 Active 狀態
         public bool IsDrawPointActive => _pointRoiService.IsDrawPointMode;
         public bool IsDrawLineActive => _lineService.IsDrawLineMode;
@@ -209,6 +223,10 @@ namespace HyImageShow.ImageShowWPF.ViewModels
         public RelayCommand ZoomToOriginalCommand { get; private set; }
         public RelayCommand ResetToCenterCommand { get; private set; }
 
+        public RelayCommand ToggleRoiPanelCommand { get; private set; }
+        public RelayCommand ToggleToolbarCommand { get; private set; }
+        public RelayCommand DeleteSelectedRoiCommand { get; private set; }
+
         private void InitializeCommands()
         {
             OpenFileCommand = new RelayCommand(OpenFile);
@@ -225,6 +243,9 @@ namespace HyImageShow.ImageShowWPF.ViewModels
             BezierArcRoiCommand = new RelayCommand(EnableBezierArcRoiMode);
             CircularArcRoiCommand = new RelayCommand(EnableCircularArcRoiMode);
             DrawPointCommand = new RelayCommand(EnableDrawPointMode);
+            ToggleRoiPanelCommand = new RelayCommand(_ => IsRoiPanelVisible = !IsRoiPanelVisible);
+            ToggleToolbarCommand = new RelayCommand(_ => IsToolbarVisible = !IsToolbarVisible);
+            DeleteSelectedRoiCommand = new RelayCommand(_ => DeleteSelectedRoi(), _ => CanDeleteSelectedRoi());
         }
 
         #endregion
@@ -241,6 +262,8 @@ namespace HyImageShow.ImageShowWPF.ViewModels
 
             if (openFileDialog.ShowDialog() == true)
             {
+                // 清除所有 ROI
+                ClearAll();
                 LoadImage(openFileDialog.FileName);
             }
         }
@@ -505,9 +528,6 @@ namespace HyImageShow.ImageShowWPF.ViewModels
             }
         }
 
-        /// <summary>
-        /// 創建白色底的空白 Canvas，填滿整個顯示區域
-        /// </summary>
         private void CreateWhiteCanvas()
         {
             // 獲取當前顯示區域的尺寸
@@ -993,19 +1013,18 @@ namespace HyImageShow.ImageShowWPF.ViewModels
         {
             if (ImageSource == null) return;
 
-            double imgWidth = ImageSource.Width;
-            double imgHeight = ImageSource.Height;
-            
-            // 獲取實際顯示區域尺寸
-            Size displaySize = _getDisplaySizeAction?.Invoke() ?? new Size(800, 600);
-            
-            double scale = Math.Min(displaySize.Width / imgWidth, displaySize.Height / imgHeight);
-            Point center = new Point(
-                (displaySize.Width - imgWidth * scale) / 2,
-                (displaySize.Height - imgHeight * scale) / 2
-            );
-            
-            ZoomAndPanTo(scale, center);
+            // 重置縮放和平移，讓 Viewbox 自動處理置中
+            ZoomAndPanTo(1.0, new Point(0, 0));
+        }
+
+        /// <summary>
+        /// 處理滑鼠按下事件（使用自定義邊界）
+        /// </summary>
+        public void HandleMouseDownWithImageBounds(Point position, Canvas canvas, bool isShift, double minX, double minY, double maxX, double maxY)
+        {
+            // 暫存邊界資訊供後續拖拽使用
+            System.Diagnostics.Debug.WriteLine($"[ViewModel] MouseDown with bounds: ({minX}, {minY}) to ({maxX}, {maxY})");
+            HandleMouseDown(position, canvas, isShift);
         }
 
         /// <summary>
@@ -1034,7 +1053,15 @@ namespace HyImageShow.ImageShowWPF.ViewModels
             if (hits.Any())
             {
                 var top = hits.OrderByDescending(h => h.roi.ZIndex).First();
+                
+                // 總是調用ROI的handle方法來處理拖曳等操作
                 top.handle(position, canvas, isShift);
+                
+                // 如果沒有啟用任何工具模式，同時設置選中狀態
+                if (!IsAnyToolModeActive())
+                {
+                    SetSelectedRoiFromBaseItem(top.roi);
+                }
             }
             else
             {
@@ -1055,6 +1082,11 @@ namespace HyImageShow.ImageShowWPF.ViewModels
                     _circularArcRoiService.HandleMouseDown(position, canvas, isShift);
                 else if (IsDrawPointActive)
                     _pointRoiService.HandleMouseDown(position, canvas, isShift);
+                else
+                {
+                    // 如果沒有工具模式啟用且點擊空白區域，清除選中狀態
+                    SelectedRoiItem = null;
+                }
             }
         }
 
@@ -1068,6 +1100,22 @@ namespace HyImageShow.ImageShowWPF.ViewModels
             _rulerService.HandleMouseMove(position, canvas);
             _rotRectRoiService.HandleMouseMove(position, canvas);
             _ellipseRoiService.HandleMouseMove(position, canvas);
+            _polygonRoiService.HandleMouseMove(position, canvas);
+            _bezierArcRoiService.HandleMouseMove(position, canvas);
+            _circularArcRoiService.HandleMouseMove(position, canvas);
+            _pointRoiService.HandleMouseMove(position, canvas);
+        }
+
+        /// <summary>
+        /// 處理滑鼠移動事件（使用自定義邊界）
+        /// </summary>
+        public void HandleMouseMoveWithImageBounds(Point position, Canvas canvas, double minX, double minY, double maxX, double maxY)
+        {
+            // 將事件傳遞給各個服務，對支援自定義邊界的服務使用自定義邊界
+            _lineService.HandleMouseMove(position, canvas);
+            _rulerService.HandleMouseMove(position, canvas);
+            _rotRectRoiService.HandleMouseMove(position, canvas);
+            _ellipseRoiService.HandleMouseMove(position, canvas, minX, minY, maxX, maxY);
             _polygonRoiService.HandleMouseMove(position, canvas);
             _bezierArcRoiService.HandleMouseMove(position, canvas);
             _circularArcRoiService.HandleMouseMove(position, canvas);
@@ -1120,6 +1168,13 @@ namespace HyImageShow.ImageShowWPF.ViewModels
                         // ESC鍵取消當前操作
                         HandleRightMouseDown(new Point(), _mainCanvas);
                         break;
+                    case Key.Delete:
+                        // Delete鍵刪除選中的ROI
+                        if (CanDeleteSelectedRoi())
+                        {
+                            DeleteSelectedRoi();
+                        }
+                        break;
                 }
             }
             catch (Exception ex)
@@ -1164,6 +1219,96 @@ namespace HyImageShow.ImageShowWPF.ViewModels
             }
             catch (Exception ex)
             {
+            }
+        }
+
+        /// <summary>
+        /// 刪除選中的ROI
+        /// </summary>
+        private void DeleteSelectedRoi()
+        {
+            if (SelectedRoiItem?.OriginalObject == null) return;
+
+            try
+            {
+                var originalObject = SelectedRoiItem.OriginalObject;
+
+                // 根據原始物件類型從對應的服務中刪除
+                if (originalObject is LineItem lineItem)
+                {
+                    _lineService.RemoveRoi(lineItem, _mainCanvas);
+                }
+                else if (originalObject is RulerItem rulerItem)
+                {
+                    _rulerService.RemoveRoi(rulerItem, _mainCanvas);
+                }
+                else if (originalObject is RectRoiItem rectRoiItem)
+                {
+                    _rotRectRoiService.RemoveRoi(rectRoiItem, _mainCanvas);
+                }
+                else if (originalObject is EllipseRoiItem ellipseRoiItem)
+                {
+                    _ellipseRoiService.RemoveRoi(ellipseRoiItem, _mainCanvas);
+                }
+                else if (originalObject is PolygonRoiItem polygonRoiItem)
+                {
+                    _polygonRoiService.RemoveRoi(polygonRoiItem, _mainCanvas);
+                }
+                else if (originalObject is BezierArcRoiItem bezierArcRoiItem)
+                {
+                    _bezierArcRoiService.RemoveRoi(bezierArcRoiItem, _mainCanvas);
+                }
+                else if (originalObject is CircularArcRoiItem circularArcRoiItem)
+                {
+                    _circularArcRoiService.RemoveRoi(circularArcRoiItem, _mainCanvas);
+                }
+                else if (originalObject is PointItem pointItem)
+                {
+                    _pointRoiService.RemoveRoi(pointItem, _mainCanvas);
+                }
+
+                // 從ROI管理服務中移除
+                _roiManagementService.RemoveRoiItem(SelectedRoiItem);
+                
+                // 清除選中狀態
+                SelectedRoiItem = null;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"刪除ROI時發生錯誤：{ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// 檢查是否可以刪除選中的ROI
+        /// </summary>
+        private bool CanDeleteSelectedRoi()
+        {
+            return SelectedRoiItem?.OriginalObject != null;
+        }
+
+        /// <summary>
+        /// 檢查是否有任何工具模式啟用
+        /// </summary>
+        private bool IsAnyToolModeActive()
+        {
+            return IsDrawPointActive || IsDrawLineActive || IsRulerActive || 
+                   IsRotRectRoiActive || IsEllipseRoiActive || IsPolygonRoiActive || 
+                   IsBezierArcRoiActive || IsCircularArcRoiActive;
+        }
+
+        /// <summary>
+        /// 根據BaseItem設置選中的ROI
+        /// </summary>
+        private void SetSelectedRoiFromBaseItem(BaseItem baseItem)
+        {
+            if (baseItem == null) return;
+
+            // 在ROI清單中找到對應的RoiItem
+            var roiItem = RoiItems.FirstOrDefault(r => r.OriginalObject == baseItem);
+            if (roiItem != null)
+            {
+                SelectedRoiItem = roiItem;
             }
         }
 

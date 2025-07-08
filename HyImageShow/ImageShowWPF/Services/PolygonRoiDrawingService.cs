@@ -37,6 +37,18 @@ namespace HyImageShow.ImageShowWPF.Services
 
         public override void DrawSingleRoi(PolygonRoiItem polygonRoi, Canvas canvas, bool showLabels = true)
         {
+            DrawSingleRoi(polygonRoi, canvas, showLabels, null);
+        }
+
+        /// <summary>
+        /// 繪製單個多邊形ROI（支持固定中心點）
+        /// </summary>
+        /// <param name="polygonRoi">多邊形ROI項目</param>
+        /// <param name="canvas">畫布</param>
+        /// <param name="showLabels">是否顯示標籤</param>
+        /// <param name="fixedCenter">固定中心點（用於拖曳過程中保持其他頂點不動）</param>
+        public void DrawSingleRoi(PolygonRoiItem polygonRoi, Canvas canvas, bool showLabels, Point? fixedCenter)
+        {
             // 先清除該多邊形ROI的所有舊視覺元素
             if (polygonRoi.Polygon != null && canvas.Children.Contains(polygonRoi.Polygon))
                 canvas.Children.Remove(polygonRoi.Polygon);
@@ -63,8 +75,8 @@ namespace HyImageShow.ImageShowWPF.Services
 
             if (polygonRoi.Points.Count > 0)
             {
-                // 計算旋轉後的點座標
-                Point center = polygonRoi.Center;
+                // 🔧 修正：使用固定中心點或動態中心點
+                Point center = fixedCenter ?? polygonRoi.Center;
                 List<Point> rotatedPoints = new List<Point>();
                 
                 foreach (var point in polygonRoi.Points)
@@ -126,7 +138,7 @@ namespace HyImageShow.ImageShowWPF.Services
 
                 if (polygonRoi.IsCompleted && rotatedPoints.Count > 2)
                 {
-                    // 繪製旋轉點
+                    // 繪製旋轉點（始終使用動態中心點計算旋轉點位置）
                     var rotateDot = new Ellipse
                     {
                         Width = 12,
@@ -139,7 +151,7 @@ namespace HyImageShow.ImageShowWPF.Services
                         RenderTransformOrigin = new Point(0.5, 0.5),
                         IsHitTestVisible = false
                     };
-                    Point rotatePoint = GetPolygonRotatePoint(polygonRoi);
+                    Point rotatePoint = GetPolygonRotatePoint(polygonRoi, fixedCenter);
                     Canvas.SetLeft(rotateDot, rotatePoint.X - 6);
                     Canvas.SetTop(rotateDot, rotatePoint.Y - 6);
                     canvas.Children.Add(rotateDot);
@@ -149,7 +161,7 @@ namespace HyImageShow.ImageShowWPF.Services
                     // 繪製標籤
                     if (showLabels)
                     {
-                        AddPolygonLabels(polygonRoi, canvas);
+                        AddPolygonLabels(polygonRoi, canvas, fixedCenter);
                     }
                 }
             }
@@ -248,14 +260,53 @@ namespace HyImageShow.ImageShowWPF.Services
         /// </summary>
         private void AddPolygonLabels(PolygonRoiItem polygonRoi, Canvas canvas)
         {
-            Point center = polygonRoi.Center;
+            AddPolygonLabels(polygonRoi, canvas, null);
+        }
+
+        /// <summary>
+        /// 添加多邊形標籤（支持固定中心點）
+        /// </summary>
+        /// <param name="polygonRoi">多邊形ROI項目</param>
+        /// <param name="canvas">畫布</param>
+        /// <param name="fixedCenter">固定中心點</param>
+        private void AddPolygonLabels(PolygonRoiItem polygonRoi, Canvas canvas, Point? fixedCenter)
+        {
+            // 🔧 修正：使用固定中心點或動態中心點
+            Point center = fixedCenter ?? polygonRoi.Center;
             
-            // 為每個頂點添加座標標籤
+            // 主標籤
+            var mainLabelText = new TextBlock
+            {
+                Text = polygonRoi.SimpleDisplayText,
+                Foreground = new SolidColorBrush(styleDict["polygon"].labelFg),
+                FontWeight = FontWeights.Bold,
+                FontSize = 12,
+                Background = new SolidColorBrush(styleDict["polygon"].labelBg),
+                Padding = new Thickness(6),
+                Effect = new DropShadowEffect { Color = Colors.Gray, BlurRadius = 3, ShadowDepth = 1, Opacity = 0.5 },
+                IsHitTestVisible = false
+            };
+            var mainLabelBorder = new Border
+            {
+                Child = mainLabelText,
+                CornerRadius = new CornerRadius(5),
+                IsHitTestVisible = false
+            };
+
+            Point rotatedCenter = RotatePoint(center, center, polygonRoi.Angle);
+            var (offsetX, offsetY) = GetLabelOffset(rotatedCenter, canvas.ActualWidth, canvas.ActualHeight);
+            Canvas.SetLeft(mainLabelBorder, rotatedCenter.X + offsetX);
+            Canvas.SetTop(mainLabelBorder, rotatedCenter.Y + offsetY);
+            canvas.Children.Add(mainLabelBorder);
+            Canvas.SetZIndex(mainLabelBorder, polygonRoi.ZIndex);
+            polygonRoi.MainLabelBorder = mainLabelBorder;
+
+            // 頂點標籤
             for (int i = 0; i < polygonRoi.Points.Count; i++)
             {
                 Point originalPoint = polygonRoi.Points[i];
                 Point rotatedPoint = RotatePoint(originalPoint, center, polygonRoi.Angle);
-                
+
                 var vertexLabelText = new TextBlock
                 {
                     Text = $"P{i + 1}({rotatedPoint.X:F0},{rotatedPoint.Y:F0})",
@@ -273,8 +324,7 @@ namespace HyImageShow.ImageShowWPF.Services
                     CornerRadius = new CornerRadius(3),
                     IsHitTestVisible = false
                 };
-                
-                // 計算頂點標籤的位置偏移
+
                 var (vertexOffsetX, vertexOffsetY) = GetVertexLabelOffset(rotatedPoint, canvas.ActualWidth, canvas.ActualHeight);
                 Canvas.SetLeft(vertexLabelBorder, rotatedPoint.X + vertexOffsetX);
                 Canvas.SetTop(vertexLabelBorder, rotatedPoint.Y + vertexOffsetY);
@@ -287,11 +337,11 @@ namespace HyImageShow.ImageShowWPF.Services
         /// <summary>
         /// 獲取多邊形旋轉點
         /// </summary>
-        private Point GetPolygonRotatePoint(PolygonRoiItem polygonRoi)
+        private Point GetPolygonRotatePoint(PolygonRoiItem polygonRoi, Point? fixedCenter)
         {
             if (polygonRoi.Points.Count == 0) return new Point();
             
-            Point center = polygonRoi.Center;
+            Point center = fixedCenter ?? polygonRoi.Center;
             double maxDistance = polygonRoi.Points.Max(p => (p - center).Length);
             Point baseRotatePoint = (Point)(center + new Vector(0, -maxDistance - 20));
             
@@ -372,141 +422,19 @@ namespace HyImageShow.ImageShowWPF.Services
         /// </summary>
         public void UpdatePolygonVisual(PolygonRoiItem polygonRoiItem)
         {
-            if (polygonRoiItem == null || mainCanvas == null) return;
+            UpdatePolygonVisual(polygonRoiItem, null);
+        }
 
-            // 重新計算旋轉後的點座標
-            Point center = polygonRoiItem.Center;
-            List<Point> rotatedPoints = new List<Point>();
-            
-            foreach (var point in polygonRoiItem.Points)
+        /// <summary>
+        /// 更新多邊形視覺元素（支持固定中心點）
+        /// </summary>
+        /// <param name="polygonRoiItem">多邊形ROI項目</param>
+        /// <param name="fixedCenter">固定中心點（用於拖曳過程中保持其他頂點不動）</param>
+        public void UpdatePolygonVisual(PolygonRoiItem polygonRoiItem, Point? fixedCenter)
+        {
+            if (mainCanvas != null)
             {
-                Point rotatedPoint = RotatePoint(point, center, polygonRoiItem.Angle);
-                rotatedPoints.Add(rotatedPoint);
-            }
-
-            // 更新多邊形位置和形狀
-            if (polygonRoiItem.Polygon != null)
-            {
-                var points = new PointCollection(rotatedPoints);
-                if (polygonRoiItem.IsCompleted && rotatedPoints.Count > 0)
-                {
-                    points.Add(rotatedPoints[0]); // 閉合多邊形
-                }
-                polygonRoiItem.Polygon.Points = points;
-            }
-            else if (rotatedPoints.Count > 0)
-            {
-                // 如果多邊形元素不存在，創建它（用於創建中的多邊形）
-                var points = new PointCollection(rotatedPoints);
-                var polyline = new Polyline
-                {
-                    Points = points,
-                    Stroke = new SolidColorBrush(styleDict["polygon"].line),
-                    StrokeThickness = 2,
-                    Fill = new SolidColorBrush(Color.FromArgb(60, 76, 175, 80)),
-                    IsHitTestVisible = false,
-                    Effect = new DropShadowEffect { Color = styleDict["polygon"].glow, BlurRadius = 10, ShadowDepth = 0, Opacity = 0.7 }
-                };
-                
-                mainCanvas.Children.Add(polyline);
-                Canvas.SetZIndex(polyline, polygonRoiItem.ZIndex);
-                polygonRoiItem.Polygon = polyline;
-            }
-
-            // 更新頂點控制點位置
-            for (int i = 0; i < rotatedPoints.Count && i < polygonRoiItem.PointDots.Count; i++)
-            {
-                if (polygonRoiItem.PointDots[i] != null)
-                {
-                    Canvas.SetLeft(polygonRoiItem.PointDots[i], rotatedPoints[i].X - 6);
-                    Canvas.SetTop(polygonRoiItem.PointDots[i], rotatedPoints[i].Y - 6);
-                }
-            }
-
-            // 添加新的頂點控制點（如果數量不匹配）
-            while (polygonRoiItem.PointDots.Count < rotatedPoints.Count)
-            {
-                int index = polygonRoiItem.PointDots.Count;
-                var dot = new Ellipse
-                {
-                    Width = 12,
-                    Height = 12,
-                    Fill = Brushes.White,
-                    Stroke = new SolidColorBrush(styleDict["polygon"].line),
-                    StrokeThickness = 2,
-                    Effect = new DropShadowEffect { Color = styleDict["polygon"].glow, BlurRadius = 8, ShadowDepth = 0, Opacity = 0.7 },
-                    RenderTransform = index < polygonRoiItem.PointScales.Count ? polygonRoiItem.PointScales[index] : new ScaleTransform(1, 1),
-                    RenderTransformOrigin = new Point(0.5, 0.5),
-                    IsHitTestVisible = false
-                };
-                
-                Canvas.SetLeft(dot, rotatedPoints[index].X - 6);
-                Canvas.SetTop(dot, rotatedPoints[index].Y - 6);
-                mainCanvas.Children.Add(dot);
-                Canvas.SetZIndex(dot, polygonRoiItem.ZIndex);
-                polygonRoiItem.PointDots.Add(dot);
-            }
-
-            // 更新旋轉點位置
-            if (polygonRoiItem.RotateDot != null && polygonRoiItem.IsCompleted)
-            {
-                Point rotatePoint = GetPolygonRotatePoint(polygonRoiItem);
-                Canvas.SetLeft(polygonRoiItem.RotateDot, rotatePoint.X - 6);
-                Canvas.SetTop(polygonRoiItem.RotateDot, rotatePoint.Y - 6);
-            }
-
-            // 更新頂點標籤位置和內容
-            for (int i = 0; i < rotatedPoints.Count && i < polygonRoiItem.VertexLabelBorders.Count; i++)
-            {
-                if (polygonRoiItem.VertexLabelBorders[i] != null)
-                {
-                    Point originalPoint = polygonRoiItem.Points[i];
-                    Point rotatedPoint = rotatedPoints[i];
-                    
-                    // 更新標籤內容 - 顯示旋轉後的座標
-                    if (polygonRoiItem.VertexLabelBorders[i].Child is TextBlock textBlock)
-                    {
-                        textBlock.Text = $"P{i + 1}({rotatedPoint.X:F0},{rotatedPoint.Y:F0})";
-                    }
-                    
-                    // 更新標籤位置
-                    var (vertexOffsetX, vertexOffsetY) = GetVertexLabelOffset(rotatedPoint, mainCanvas.ActualWidth, mainCanvas.ActualHeight);
-                    Canvas.SetLeft(polygonRoiItem.VertexLabelBorders[i], rotatedPoint.X + vertexOffsetX);
-                    Canvas.SetTop(polygonRoiItem.VertexLabelBorders[i], rotatedPoint.Y + vertexOffsetY);
-                }
-            }
-
-            // 添加新的頂點標籤（如果數量不匹配）
-            while (polygonRoiItem.VertexLabelBorders.Count < rotatedPoints.Count)
-            {
-                int index = polygonRoiItem.VertexLabelBorders.Count;
-                Point originalPoint = polygonRoiItem.Points[index];
-                Point rotatedPoint = rotatedPoints[index];
-                
-                var vertexLabelText = new TextBlock
-                {
-                    Text = $"P{index + 1}({rotatedPoint.X:F0},{rotatedPoint.Y:F0})",
-                    Foreground = new SolidColorBrush(styleDict["polygon"].labelFg),
-                    FontWeight = FontWeights.Bold,
-                    FontSize = 10,
-                    Background = new SolidColorBrush(styleDict["polygon"].labelBg),
-                    Padding = new Thickness(3),
-                    Effect = new DropShadowEffect { Color = Colors.Gray, BlurRadius = 3, ShadowDepth = 1, Opacity = 0.5 },
-                    IsHitTestVisible = false
-                };
-                var vertexLabelBorder = new Border
-                {
-                    Child = vertexLabelText,
-                    CornerRadius = new CornerRadius(3),
-                    IsHitTestVisible = false
-                };
-                
-                var (vertexOffsetX, vertexOffsetY) = GetVertexLabelOffset(rotatedPoint, mainCanvas.ActualWidth, mainCanvas.ActualHeight);
-                Canvas.SetLeft(vertexLabelBorder, rotatedPoint.X + vertexOffsetX);
-                Canvas.SetTop(vertexLabelBorder, rotatedPoint.Y + vertexOffsetY);
-                mainCanvas.Children.Add(vertexLabelBorder);
-                Canvas.SetZIndex(vertexLabelBorder, polygonRoiItem.ZIndex);
-                polygonRoiItem.VertexLabelBorders.Add(vertexLabelBorder);
+                DrawSingleRoi(polygonRoiItem, mainCanvas, true, fixedCenter);
             }
         }
 

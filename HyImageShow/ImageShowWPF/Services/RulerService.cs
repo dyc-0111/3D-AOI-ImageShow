@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
@@ -149,32 +150,48 @@ namespace HyImageShow.ImageShowWPF.Services
 
         public void HandleMouseMove(Point pos, Canvas canvas)
         {
+            double maxX = canvas.ActualWidth;
+            double maxY = canvas.ActualHeight;
             if (IsRulerMode && currentRuler != null)
             {
-                UpdateRuler(pos);
+                var clamp = HyImageShow.ImageShowWPF.Models.CanvasBoundaryHelper.ClampLine(currentRuler.Point1, pos, 0, 0, maxX, maxY);
+                currentRuler.Point2 = clamp.p2;
+                RulerUpdated?.Invoke(currentRuler);
+                if (rulerDrawingService != null && mainCanvas != null)
+                {
+                    rulerDrawingService.DrawRois(mainCanvas, rulerItems.ToList(), currentRuler, ShowLabels);
+                }
             }
             foreach (var rulerItem in rulerItems)
             {
                 if (rulerItem.IsDraggingPoint1)
                 {
-                    rulerItem.Point1 = pos;
+                    var clamp = HyImageShow.ImageShowWPF.Models.CanvasBoundaryHelper.ClampLine(rulerItem.Point2, pos, 0, 0, maxX, maxY);
+                    rulerItem.Point1 = clamp.p2;
                     rulerDrawingService?.UpdateRulerVisual(rulerItem);
                     RulerUpdated?.Invoke(rulerItem);
                 }
                 else if (rulerItem.IsDraggingPoint2)
                 {
-                    rulerItem.Point2 = pos;
+                    var clamp = HyImageShow.ImageShowWPF.Models.CanvasBoundaryHelper.ClampLine(rulerItem.Point1, pos, 0, 0, maxX, maxY);
+                    rulerItem.Point2 = clamp.p2;
                     rulerDrawingService?.UpdateRulerVisual(rulerItem);
                     RulerUpdated?.Invoke(rulerItem);
                 }
                 else if (rulerItem.IsDraggingRuler)
                 {
                     Vector delta = pos - rulerItem.LastDragPos;
-                    rulerItem.Point1 = (Point)(rulerItem.Point1 + delta);
-                    rulerItem.Point2 = (Point)(rulerItem.Point2 + delta);
-                    rulerItem.LastDragPos = pos;
-                    rulerDrawingService?.UpdateRulerVisual(rulerItem);
-                    RulerUpdated?.Invoke(rulerItem);
+                    Point newP1 = rulerItem.Point1 + delta;
+                    Point newP2 = rulerItem.Point2 + delta;
+                    if (newP1.X >= 0 && newP1.X <= maxX && newP1.Y >= 0 && newP1.Y <= maxY &&
+                        newP2.X >= 0 && newP2.X <= maxX && newP2.Y >= 0 && newP2.Y <= maxY)
+                    {
+                        rulerItem.Point1 = newP1;
+                        rulerItem.Point2 = newP2;
+                        rulerItem.LastDragPos = pos;
+                        rulerDrawingService?.UpdateRulerVisual(rulerItem);
+                        RulerUpdated?.Invoke(rulerItem);
+                    }
                 }
             }
         }
@@ -295,6 +312,30 @@ namespace HyImageShow.ImageShowWPF.Services
             mainCanvas = canvas;
         }
 
+        public override void RemoveRoi(RulerItem rulerRoi, Canvas canvas)
+        {
+            if (rulerRoi == null || canvas == null) return;
+            
+            // 如果是當前繪製的量尺，清除當前狀態
+            if (currentRuler == rulerRoi)
+            {
+                currentRuler = null;
+            }
+            
+            // 從Canvas清除視覺元素
+            if (rulerDrawingService != null)
+            {
+                rulerDrawingService.ClearRois(canvas, new List<RulerItem> { rulerRoi });
+            }
+            
+            // 從集合中移除
+            if (rulerItems.Remove(rulerRoi))
+            {
+                // 觸發移除事件
+                RulerRemoved?.Invoke(rulerRoi);
+            }
+        }
+
         public RulerItem GetHitRoiItem(Point pos)
         {
             foreach (var rulerItem in rulerItems)
@@ -306,6 +347,52 @@ namespace HyImageShow.ImageShowWPF.Services
                 }
             }
             return null;
+        }
+
+        public void HandleMouseMoveWithClamp(Point pos, Canvas canvas, double maxX, double maxY)
+        {
+            if (IsRulerMode && currentRuler != null)
+            {
+                var clamp = HyImageShow.ImageShowWPF.Models.CanvasBoundaryHelper.ClampLine(currentRuler.Point1, pos, 0, 0, maxX, maxY);
+                currentRuler.Point2 = clamp.p2;
+                RulerUpdated?.Invoke(currentRuler);
+                if (rulerDrawingService != null && mainCanvas != null)
+                {
+                    rulerDrawingService.DrawRois(mainCanvas, rulerItems.ToList(), currentRuler, ShowLabels);
+                }
+            }
+            foreach (var rulerItem in rulerItems)
+            {
+                if (rulerItem.IsDraggingPoint1)
+                {
+                    var clamp = HyImageShow.ImageShowWPF.Models.CanvasBoundaryHelper.ClampLine(rulerItem.Point2, pos, 0, 0, maxX, maxY);
+                    rulerItem.Point1 = clamp.p2;
+                    rulerDrawingService?.UpdateRulerVisual(rulerItem);
+                    RulerUpdated?.Invoke(rulerItem);
+                }
+                else if (rulerItem.IsDraggingPoint2)
+                {
+                    var clamp = HyImageShow.ImageShowWPF.Models.CanvasBoundaryHelper.ClampLine(rulerItem.Point1, pos, 0, 0, maxX, maxY);
+                    rulerItem.Point2 = clamp.p2;
+                    rulerDrawingService?.UpdateRulerVisual(rulerItem);
+                    RulerUpdated?.Invoke(rulerItem);
+                }
+                else if (rulerItem.IsDraggingRuler)
+                {
+                    Vector delta = pos - rulerItem.LastDragPos;
+                    Point newP1 = rulerItem.Point1 + delta;
+                    Point newP2 = rulerItem.Point2 + delta;
+                    if (newP1.X >= 0 && newP1.X <= maxX && newP1.Y >= 0 && newP1.Y <= maxY &&
+                        newP2.X >= 0 && newP2.X <= maxX && newP2.Y >= 0 && newP2.Y <= maxY)
+                    {
+                        rulerItem.Point1 = newP1;
+                        rulerItem.Point2 = newP2;
+                        rulerItem.LastDragPos = pos;
+                        rulerDrawingService?.UpdateRulerVisual(rulerItem);
+                        RulerUpdated?.Invoke(rulerItem);
+                    }
+                }
+            }
         }
     }
 } 
