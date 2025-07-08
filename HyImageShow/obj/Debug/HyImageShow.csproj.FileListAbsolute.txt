@@ -170,3 +170,7 @@ D:\@Code\新增資料夾\3D-AOI-ImageShow-DYC - Delete\HyImageShow\obj\Debug\HyI
 D:\@Code\新增資料夾\3D-AOI-ImageShow-DYC - Delete\HyImageShow\obj\Debug\HyImageS.3FBB8A21.Up2Date
 D:\@Code\新增資料夾\3D-AOI-ImageShow-DYC - Delete\HyImageShow\obj\Debug\HyImageShow.exe
 D:\@Code\新增資料夾\3D-AOI-ImageShow-DYC - Delete\HyImageShow\obj\Debug\HyImageShow.pdb
+D:\@Code\新增資料夾\3D-AOI-ImageShow-DYC - Delete\HyImageShow\bin\Debug\System.Runtime.CompilerServices.Unsafe.dll
+D:\@Code\新增資料夾\3D-AOI-ImageShow-DYC - Delete\HyImageShow\bin\Debug\Microsoft.Bcl.AsyncInterfaces.xml
+D:\@Code\新增資料夾\3D-AOI-ImageShow-DYC - Delete\HyImageShow\bin\Debug\System.Runtime.CompilerServices.Unsafe.xml
+D:\@Code\新增資料夾\3D-AOI-ImageShow-DYC - Delete\HyImageShow\bin\Debug\System.Threading.Tasks.Extensions.xml

@@ -27,7 +27,13 @@ namespace WpfApp1
         public MainWindow()
         {
             InitializeComponent();
-            mainImageShow.DataContext = ImageShowViewModel.CreateDefaultServices();
+            var vm = ImageShowViewModel.CreateDefaultServices();
+            mainImageShow.DataContext = vm;
+
+            vm.NewFileCommand.Execute(null);
+
+            mainImageShow.ToggleRoiPanelVisible(false);
+            mainImageShow.ToggleToolbarVisible(false);
 
             var roiDataList = new List<RoiData>
             {
