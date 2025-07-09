@@ -185,6 +185,7 @@ namespace HyImageShow.ImageShowWPF.Services
             double minX = 0, minY = 0;
             double maxX = canvas.ActualWidth;
             double maxY = canvas.ActualHeight;
+            
             if (isDrawingRect && rectPreviewItem != null)
             {
                 double width = Math.Abs(pos.X - rectStartPoint.X);

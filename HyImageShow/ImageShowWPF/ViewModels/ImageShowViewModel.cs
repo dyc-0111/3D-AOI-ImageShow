@@ -9,6 +9,7 @@ using Microsoft.Win32;
 using HyImageShow.ImageShowWPF.Commands;
 using HyImageShow.ImageShowWPF.Models;
 using HyImageShow.ImageShowWPF.Services;
+using HyImageShow.ImageShowWPF.View;
 using System.Windows.Input;
 using System.Runtime.InteropServices;
 using System.Linq;
@@ -53,6 +54,8 @@ namespace HyImageShow.ImageShowWPF.ViewModels
         private Action<Point> _panAction;
         private Action<double, Point> _zoomAndPanAction;
         private Func<Size> _getDisplaySizeAction;
+        private Action _fitImageToWindowAction; // 新增：適應視窗的回呼
+        private MainImageShow _mainImageShow; // 新增：MainImageShow的引用
 
         public ImageShowViewModel(
             RoiManagementService roiManagementService,
@@ -801,7 +804,6 @@ namespace HyImageShow.ImageShowWPF.ViewModels
 
             // Log: 新增時
             var roiItem = _roiManagementService.RoiItems.FirstOrDefault(x => x.OriginalObject == bezierArcRoiItem);
-            System.Diagnostics.Debug.WriteLine($"[ViewModel] Add: bezierArcRoiItem Hash={bezierArcRoiItem.GetHashCode()}, In RoiItems={(roiItem != null ? "YES" : "NO")}");
         }
 
         private void OnBezierArcRoiUpdated(BezierArcRoiItem bezierArcRoiItem)
@@ -946,28 +948,28 @@ namespace HyImageShow.ImageShowWPF.ViewModels
         }
 
         /// <summary>
-        /// 設置 OverlayCanvas，用於繪製十字線等固定元素
+        /// 設置變換相關的Action回呼
         /// </summary>
-        public void SetOverlayCanvas(Canvas overlayCanvas)
-        {
-            // ROI 服務應該使用 MainCanvas，這樣會跟著圖片縮放
-            // 只有十字線使用 OverlayCanvas，保持固定位置
-        }
-
-        /// <summary>
-        /// 設置 Transform 更新 Actions，讓 ViewModel 能夠間接控制 View 層的 Transform
-        /// </summary>
-        /// <param name="zoomAction">縮放 Action</param>
-        /// <param name="panAction">平移 Action</param>
-        /// <param name="zoomAndPanAction">縮放和平移 Action</param>
-        /// <param name="getDisplaySizeAction">獲取顯示區域尺寸的 Action</param>
-        public void SetTransformActions(Action<double> zoomAction, Action<Point> panAction, Action<double, Point> zoomAndPanAction = null, Func<Size> getDisplaySizeAction = null)
+        public void SetTransformActions(Action<double> zoomAction, Action<Point> panAction, Action<double, Point> zoomAndPanAction = null, Func<Size> getDisplaySizeAction = null, Action fitImageToWindowAction = null)
         {
             _zoomAction = zoomAction;
             _panAction = panAction;
             _zoomAndPanAction = zoomAndPanAction;
             _getDisplaySizeAction = getDisplaySizeAction;
+            _fitImageToWindowAction = fitImageToWindowAction; // 新增
         }
+
+        /// <summary>
+        /// 設置MainImageShow引用以進行座標轉換
+        /// </summary>
+        public void SetMainImageShow(MainImageShow mainImageShow)
+        {
+            _mainImageShow = mainImageShow;
+            
+            // 注意：不再在這裡設置 BaseItem.CoordinateConverter
+            // 因為這會被多個 ViewModel 實例覆蓋，現在由 MainImageShow 直接設置
+        }
+
 
         /// <summary>
         /// 縮放到指定比例
@@ -1011,10 +1013,7 @@ namespace HyImageShow.ImageShowWPF.ViewModels
         /// </summary>
         public void FitImageToWindow()
         {
-            if (ImageSource == null) return;
-
-            // 重置縮放和平移，讓 Viewbox 自動處理置中
-            ZoomAndPanTo(1.0, new Point(0, 0));
+            _fitImageToWindowAction?.Invoke();
         }
 
         /// <summary>

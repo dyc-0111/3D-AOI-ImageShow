@@ -10,10 +10,6 @@ namespace HyImageShow.ImageShowWPF.View.RoiCards
         public BezierArcRoiCard()
         {
             InitializeComponent();
-            this.DataContextChanged += (s, e) =>
-            {
-                System.Diagnostics.Debug.WriteLine("BezierArcRoiCard DataContext: " + (this.DataContext?.GetType().Name ?? "null"));
-            };
         }
     }
 } 

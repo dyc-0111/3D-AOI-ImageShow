@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Windows;
 using HyImageShow.ImageShowWPF.Models;
@@ -7,15 +8,22 @@ namespace HyImageShow.ImageShowWPF.Data
     public static class RoiDataConverter
     {
         // RectRoiItem <-> RoiData
-        public static RoiData FromRectRoiItem(RectRoiItem item)
+        public static RoiData FromRectRoiItem(
+                RectRoiItem item,
+                Func<Point, Point> displayToImageConverter,
+                Func<double, double> widthConverter = null,
+                Func<double, double> heightConverter = null)
         {
+            var center = displayToImageConverter != null ? displayToImageConverter(item.CenterPoint) : item.CenterPoint;
+            double width = widthConverter != null ? widthConverter(item.Width) : item.Width;
+            double height = heightConverter != null ? heightConverter(item.Height) : item.Height;
             return new RoiData
             {
                 Type = RoiType.RotRect,
-                CenterX = item.CenterPoint.X,
-                CenterY = item.CenterPoint.Y,
-                Width = item.Width,
-                Height = item.Height,
+                CenterX = center.X,
+                CenterY = center.Y,
+                Width = width,
+                Height = height,
                 Angle = item.RotationAngle
             };
         }
@@ -32,12 +40,13 @@ namespace HyImageShow.ImageShowWPF.Data
         }
 
         // PolygonRoiItem <-> RoiData
-        public static RoiData FromPolygonRoiItem(PolygonRoiItem item)
+        public static RoiData FromPolygonRoiItem(PolygonRoiItem item, System.Func<Point, Point> displayToImageConverter)
         {
+            var points = displayToImageConverter != null ? item.Points.ConvertAll(p => displayToImageConverter(p)) : new List<Point>(item.Points);
             return new RoiData
             {
                 Type = RoiType.Polygon,
-                Points = new List<Point>(item.Points),
+                Points = points,
                 Angle = item.RotationAngle
             };
         }
@@ -52,15 +61,17 @@ namespace HyImageShow.ImageShowWPF.Data
         }
 
         // EllipseRoiItem <-> RoiData
-        public static RoiData FromEllipseRoiItem(EllipseRoiItem item)
+        public static RoiData FromEllipseRoiItem(EllipseRoiItem item, System.Func<Point, Point> displayToImageConverter, System.Func<double, double> lengthConverter = null)
         {
+            var center = displayToImageConverter != null ? displayToImageConverter(item.CenterPoint) : item.CenterPoint;
+            double diameter = lengthConverter != null ? lengthConverter(item.Radius * 2) : item.Radius * 2;
             return new RoiData
             {
                 Type = RoiType.Ellipse,
-                CenterX = item.CenterPoint.X,
-                CenterY = item.CenterPoint.Y,
-                Width = item.Radius * 2,
-                Height = item.Radius * 2
+                CenterX = center.X,
+                CenterY = center.Y,
+                Width = diameter,
+                Height = diameter
             };
         }
         public static EllipseRoiItem ToEllipseRoiItem(RoiData data)
@@ -74,17 +85,22 @@ namespace HyImageShow.ImageShowWPF.Data
         }
 
         // CircularArcRoiItem <-> RoiData
-        public static RoiData FromCircularArcRoiItem(CircularArcRoiItem item)
+        public static RoiData FromCircularArcRoiItem(CircularArcRoiItem item, System.Func<Point, Point> displayToImageConverter, System.Func<double, double> lengthConverter = null)
         {
+            var center = displayToImageConverter != null ? displayToImageConverter(item.CenterPoint) : item.CenterPoint;
+            var start = displayToImageConverter != null ? displayToImageConverter(item.StartPoint) : item.StartPoint;
+            var end = displayToImageConverter != null ? displayToImageConverter(item.EndPoint) : item.EndPoint;
+            var mid = displayToImageConverter != null ? displayToImageConverter(item.UserMidPoint) : item.UserMidPoint;
+            double diameter = lengthConverter != null ? lengthConverter(item.Radius * 2) : item.Radius * 2;
             return new RoiData
             {
                 Type = RoiType.CircularArc,
-                CenterX = item.CenterPoint.X,
-                CenterY = item.CenterPoint.Y,
-                Width = item.Radius * 2,
-                Height = item.Radius * 2,
+                CenterX = center.X,
+                CenterY = center.Y,
+                Width = diameter,
+                Height = diameter,
                 Angle = item.StartAngle,
-                Points = new List<Point> { item.StartPoint, item.EndPoint, item.UserMidPoint }
+                Points = new List<Point> { start, end, mid }
             };
         }
         public static CircularArcRoiItem ToCircularArcRoiItem(RoiData data)
@@ -106,12 +122,14 @@ namespace HyImageShow.ImageShowWPF.Data
         }
 
         // RulerItem <-> RoiData
-        public static RoiData FromRulerItem(RulerItem item)
+        public static RoiData FromRulerItem(RulerItem item, System.Func<Point, Point> displayToImageConverter)
         {
+            var p1 = displayToImageConverter != null ? displayToImageConverter(item.Point1) : item.Point1;
+            var p2 = displayToImageConverter != null ? displayToImageConverter(item.Point2) : item.Point2;
             return new RoiData
             {
                 Type = RoiType.Ruler,
-                Points = new List<Point> { item.Point1, item.Point2 }
+                Points = new List<Point> { p1, p2 }
             };
         }
         public static RulerItem ToRulerItem(RoiData data)
@@ -126,12 +144,15 @@ namespace HyImageShow.ImageShowWPF.Data
         }
 
         // BezierArcRoiItem <-> RoiData
-        public static RoiData FromBezierArcRoiItem(BezierArcRoiItem item)
+        public static RoiData FromBezierArcRoiItem(BezierArcRoiItem item, System.Func<Point, Point> displayToImageConverter)
         {
+            var start = displayToImageConverter != null ? displayToImageConverter(item.StartPoint) : item.StartPoint;
+            var mid = displayToImageConverter != null ? displayToImageConverter(item.MiddlePoint) : item.MiddlePoint;
+            var end = displayToImageConverter != null ? displayToImageConverter(item.EndPoint) : item.EndPoint;
             return new RoiData
             {
                 Type = RoiType.BezierArc,
-                Points = new List<Point> { item.StartPoint, item.MiddlePoint, item.EndPoint }
+                Points = new List<Point> { start, mid, end }
             };
         }
         public static BezierArcRoiItem ToBezierArcRoiItem(RoiData data)
@@ -147,12 +168,14 @@ namespace HyImageShow.ImageShowWPF.Data
         }
 
         // LineItem <-> RoiData
-        public static RoiData FromLineItem(LineItem item)
+        public static RoiData FromLineItem(LineItem item, System.Func<Point, Point> displayToImageConverter)
         {
+            var p1 = displayToImageConverter != null ? displayToImageConverter(item.P1) : item.P1;
+            var p2 = displayToImageConverter != null ? displayToImageConverter(item.P2) : item.P2;
             return new RoiData
             {
                 Type = RoiType.Line,
-                Points = new List<Point> { item.P1, item.P2 }
+                Points = new List<Point> { p1, p2 }
             };
         }
         public static LineItem ToLineItem(RoiData data)
@@ -167,12 +190,13 @@ namespace HyImageShow.ImageShowWPF.Data
         }
 
         // PointItem <-> RoiData
-        public static RoiData FromPointItem(PointItem item)
+        public static RoiData FromPointItem(PointItem item, System.Func<Point, Point> displayToImageConverter)
         {
+            var pos = displayToImageConverter != null ? displayToImageConverter(item.Position) : item.Position;
             return new RoiData
             {
                 Type = RoiType.Point,
-                Points = new List<Point> { item.Position }
+                Points = new List<Point> { pos }
             };
         }
         public static PointItem ToPointItem(RoiData data)
@@ -184,4 +208,4 @@ namespace HyImageShow.ImageShowWPF.Data
             return null;
         }
     }
-} 
+}

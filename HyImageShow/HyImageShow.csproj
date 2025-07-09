@@ -120,6 +120,7 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="ImageShowWPF\Data\CoordinateConverter.cs" />
     <Compile Include="ImageShowWPF\Data\RoiData.cs" />
     <Compile Include="ImageShowWPF\Data\RoiDataConverter.cs" />
     <Compile Include="ImageShowWPF\Models\BaseItem.cs" />
@@ -197,6 +198,8 @@
     <Compile Include="ImageShowWPF\Services\EllipseRoiDrawingService.cs" />
     <Compile Include="ImageShowWPF\Services\EllipseRoiService.cs" />
     <Compile Include="ImageShowWPF\Services\IRoiManagementService.cs" />
+    <Compile Include="ImageShowWPF\API\IImageShowAPI.cs" />
+    <Compile Include="ImageShowWPF\API\ImageShowAPI.cs" />
     <Compile Include="ImageShowWPF\Services\PolygonRoiDrawingService.cs" />
     <Compile Include="ImageShowWPF\Services\PolygonRoiService.cs" />
     <Compile Include="ImageShowWPF\Services\RoiManagementService.cs" />

@@ -201,31 +201,33 @@
             <Border Grid.Column="0"
                     Background="LightGray"
                     Margin="8">
-                <Grid Name="MainCanvasGrid" Background="#D3D3D3">
-                    <Viewbox x:Name="ImageContainer" Stretch="Uniform">
-                        <Grid x:Name="ImageViewGrid" RenderTransformOrigin="0.5,0.5">
-                            <Grid.RenderTransform>
-                                <TransformGroup>
-                                    <ScaleTransform x:Name="MainCanvasScaleTransform" ScaleX="1" ScaleY="1" />
-                                    <TranslateTransform x:Name="MainCanvasTranslateTransform" />
-                                </TransformGroup>
-                            </Grid.RenderTransform>
-                            
-                            <Image x:Name="MainImage"
-                                   Source="{Binding ImageSource}"
-                                   RenderOptions.BitmapScalingMode="HighQuality" />
-                            
-                            <Canvas x:Name="MainCanvas"
-                                    Background="Transparent"
-                                    Panel.ZIndex="10"
-                                    Width="{Binding ElementName=MainImage, Path=ActualWidth}"
-                                    Height="{Binding ElementName=MainImage, Path=ActualHeight}" />
-                        </Grid>
-                    </Viewbox>
-                    
-                    <!-- 十字線/ROI等Overlay層 -->
-                    <Canvas x:Name="OverlayCanvas"
-                            IsHitTestVisible="False" />
+                <Grid Name="MainCanvasGrid" Background="#D3D3D3" ClipToBounds="True">
+                    <Grid x:Name="ImageViewGrid" 
+                          RenderTransformOrigin="0.5,0.5"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center">
+                        <Grid.RenderTransform>
+                            <TransformGroup>
+                                <ScaleTransform x:Name="MainCanvasScaleTransform" ScaleX="1" ScaleY="1" />
+                                <TranslateTransform x:Name="MainCanvasTranslateTransform" />
+                            </TransformGroup>
+                        </Grid.RenderTransform>
+                        
+                        <Image x:Name="MainImage"
+                               Source="{Binding ImageSource}"
+                               RenderOptions.BitmapScalingMode="HighQuality"
+                               Stretch="Uniform"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center" />
+                        
+                        <Canvas x:Name="MainCanvas"
+                                Background="Transparent"
+                                Panel.ZIndex="10"
+                                Width="{Binding ElementName=MainImage, Path=ActualWidth}"
+                                Height="{Binding ElementName=MainImage, Path=ActualHeight}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center" />
+                    </Grid>
                 </Grid>
             </Border>
             

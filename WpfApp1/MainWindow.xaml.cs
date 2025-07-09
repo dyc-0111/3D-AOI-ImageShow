@@ -1,6 +1,7 @@
 ﻿using HyImageShow.ImageShowWPF.View;
 using HyImageShow.ImageShowWPF.ViewModels;
 using HyImageShow.ImageShowWPF.Data;
+using HyImageShow.ImageShowWPF.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,17 +25,30 @@ namespace WpfApp1
     /// </summary>
     public partial class MainWindow : Window
     {
+        private IImageShowAPI _imageShowAPI;
+
         public MainWindow()
         {
             InitializeComponent();
+
+            // 建立 ViewModel 和 API
             var vm = ImageShowViewModel.CreateDefaultServices();
+            _imageShowAPI = new ImageShowAPI(vm);
             mainImageShow.DataContext = vm;
 
-            vm.NewFileCommand.Execute(null);
+            InitializeImageShow();
+        }
 
+        private void InitializeImageShow()
+        {
+            // 建立新檔案
+            _imageShowAPI.NewFile();
+
+            // 隱藏 ROI 面板和工具列（如果您不想顯示 UI）
             mainImageShow.ToggleRoiPanelVisible(false);
             mainImageShow.ToggleToolbarVisible(false);
 
+            // 設定一些預設的 ROI 數據
             var roiDataList = new List<RoiData>
             {
                 new RoiData
@@ -59,41 +73,10 @@ namespace WpfApp1
                     CenterY = 300,
                     Width = 100,
                     Height = 100
-                },
-                new RoiData
-                {
-                    Type = RoiType.Line,
-                    Points = new List<Point> { new Point(400, 400), new Point(600, 420) }
-                },
-                new RoiData
-                {
-                    Type = RoiType.Ruler,
-                    Points = new List<Point> { new Point(450, 400), new Point(600, 420) }
-                },
-                new RoiData
-                {
-                    Type = RoiType.BezierArc,
-                    CenterX = 600,
-                    CenterY = 200,
-                    Width = 120,
-                    Height = 120,
-                    Angle = 0,
-                    Points = new List<Point> { new Point(660, 200), new Point(600, 260), new Point(540, 200) }
-                },
-                new RoiData
-                {
-                    Type = RoiType.CircularArc,
-                    CenterX = 600,
-                    CenterY = 200,
-                    Width = 120,
-                    Height = 120,
-                    Angle = 0,
-                    Points = new List<Point> { new Point(60, 200), new Point(60, 260), new Point(540, 200) }
                 }
             };
             mainImageShow.SetAllRoiData(roiDataList);
-
-            var result = mainImageShow.GetAllRoiData();
         }
+
     }
 }

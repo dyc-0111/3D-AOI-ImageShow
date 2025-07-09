@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel;
 using System.Windows;
+using HyImageShow.ImageShowWPF.View;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
@@ -18,6 +19,28 @@ namespace HyImageShow.ImageShowWPF.Models
         private bool isDetailsVisible;
         private int zIndex;
         private bool selected;
+
+        // 新增：靜態的座標轉換委託
+        public static Func<Point, Point> CoordinateConverter { get; set; }
+        
+        /// <summary>
+        /// 設置當前活動的座標轉換器（避免多實例覆蓋問題）
+        /// </summary>
+        public static void SetActiveCoordinateConverter(MainImageShow mainImageShow)
+        {
+            if (CoordinateConverter != null && CoordinateConverter.Target != null && mainImageShow != null && CoordinateConverter.Target != mainImageShow)
+            {
+                return;
+            }
+            if (mainImageShow != null)
+            {
+                CoordinateConverter = mainImageShow.ConvertDisplayToOriginalCoordinates;
+            }
+            else
+            {
+                CoordinateConverter = null;
+            }
+        }
 
         protected BaseItem()
         {
@@ -262,7 +285,23 @@ namespace HyImageShow.ImageShowWPF.Models
         /// <returns>格式化文字</returns>
         protected static string FormatPointText(Point point, string format = "F0")
         {
-            return $"({point.X.ToString(format)}, {point.Y.ToString(format)})";
+            if (double.IsNaN(point.X) || double.IsNaN(point.Y))
+            {
+                return "(N/A, N/A)";
+            }
+            if (CoordinateConverter == null)
+            {
+                return "(N/A, N/A)";
+            }
+            Point originalPoint = CoordinateConverter(point);
+            
+            // 檢查是否真的轉換了
+            if (Math.Abs(originalPoint.X - point.X) < 1 && Math.Abs(originalPoint.Y - point.Y) < 1)
+            {
+                System.Diagnostics.Debug.WriteLine($"[FormatPointText] ⚠️ 警告：座標沒有實際轉換！");
+            }
+            
+            return $"({originalPoint.X.ToString(format)}, {originalPoint.Y.ToString(format)})";
         }
 
         /// <summary>
